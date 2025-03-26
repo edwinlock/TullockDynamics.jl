@@ -36,7 +36,7 @@ end
 """
 Implementation of "dumb" estimate, given own `efforts' and `wins`.
 """
-function dumb_estimator(; own_efforts::Vector{Float64}, wins::Int, _ignore...)
+function dumb_estimator(; own_efforts::Vector{Float64}, wins::Vector{Bool}, _ignore...)::Float64
     w = sum(wins)  # compute number of wins
     # Deal with edge case of zero wins
     w == 0 && return 1  # TODO: discuss with Abheek and Sonja!

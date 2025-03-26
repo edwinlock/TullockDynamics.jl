@@ -59,8 +59,6 @@ function Plots.plot(contest::TullockContest; ylims)
 end
 
 
-
-
 """
 Plot given `data`` matrix for a Tullock contest.
 """
