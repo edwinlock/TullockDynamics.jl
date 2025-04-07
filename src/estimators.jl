@@ -51,6 +51,16 @@ end
 
 
 """
+Implementation of full knowledge estimate, given own `efforts` and `total_efforts`,
+which simply returns the total effort of others in the last round.
+"""
+function classic_estimator(; own_efforts::Vector{Float64}, total_efforts::Vector{Float64}, _ignore...)::Float64
+    return total_efforts[end] - own_efforts[end]
+end
+
+
+
+"""
 Implementation of Bayesian estimate, given own `efforts` and `wins`.
 
 TODO: Finish this!

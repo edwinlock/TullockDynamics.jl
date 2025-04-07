@@ -96,7 +96,6 @@ end
 Run the contest.
 """
 function run!(contest::TullockContest)
-    println("Running contest")
     T = num_rounds(contest)
     @showprogress for t ∈ 1:T
         step!(contest, t)

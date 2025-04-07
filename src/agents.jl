@@ -97,7 +97,7 @@ end
 
 """
 Create a deterministic MLE agent with `cost` function, and minimum
-effort bound `δ` (with default 0.01).
+effort bound `δ` (defaults to 0.01).
 
 The agent plays in every round, has access to her entire history
 and has step size 1.
@@ -113,7 +113,7 @@ end
 
 """
 Create a dumb agent with `cost` function, and minimum
-effort bound `δ` (with default 0.01).
+effort bound `δ` (defaults to 0.01).
 
 The agent plays in every round, has access to her entire history
 and has step size 1.
@@ -124,4 +124,20 @@ function DumbAgent(cost; δ=0.01)
     α(t) = 1  # commits fully to best response (no interpolation)
     estimator = dumb_estimator
     return Agent(cost, p, window, α, estimator, δ)
+end
+
+
+"""
+Create a classic agent with `cost` function, and minimum
+effort bound `δ` (defaults to 0.01).
+
+The agent plays in every round, has access to her entire history
+and has step size `α` (defaults to 1).
+"""
+function ClassicAgent(cost; α=1, δ=0.01)
+    p(t) = 1  # plays in every round
+    window(t) = 1:t-1  # access to entire history
+    step(t) = α  # commits fully to best response (no interpolation)
+    estimator = omniscient_estimator
+    return Agent(cost, p, window, step, estimator, δ)
 end
