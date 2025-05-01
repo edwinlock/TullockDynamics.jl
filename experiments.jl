@@ -1,5 +1,6 @@
 using DataFrames
 using Random
+using StableRNGs
 
 rng = StableRNG(123456789)
 
