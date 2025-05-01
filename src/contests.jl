@@ -25,6 +25,9 @@ function TullockContest(agents::Vector{Agent}, x::Vector{Float64}, T::Int)
 end
 
 
+"""
+Compute the Nash gap of contest in round `t`.
+"""
 function nash_gap(contest::TullockContest, t::Int)
     return sum(contest.nash_gaps[:,t])
 end
