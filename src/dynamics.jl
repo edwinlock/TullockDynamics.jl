@@ -11,10 +11,12 @@ using StatsBase
 
 """Set efforts of all agents in round `t` of TC `contest`."""
 function set_efforts!(contest::TullockContest, t::Int; rng)
+    # println("The RNG for set_efforts! is $(rng)")
     @assert t ≥ 2 "In order to update efforts, the round must be t ≥ 2."
     # Run through all agents and set their efforts in round t
     Threads.@threads for i ∈ eachindex(contest.agents)
         agent = contest.agents[i]
+        # println("Agent $(i)")
         # Flip biased coin to determine whether agent updates their effort
         coin = rand(rng)
         if coin >= agent.p(t)  # repeat same effort as in previous round
@@ -36,6 +38,7 @@ function set_efforts!(contest::TullockContest, t::Int; rng)
             prev_effort = contest.efforts[i, t-1]
             x = agent.α(t) * br + (1-agent.α(t)) * prev_effort
             contest.efforts[i,t] = x
+            # println("Estimate $(est) and new effort $(x)")
         end
     end
     return nothing
@@ -81,6 +84,7 @@ Run round `t` of TC `contest`. This involves getting agents to update their
 efforts, and then determining a winner.
 """
 function step!(contest::TullockContest, t::Int; rng)
+    # println("The RNG for step! is $(rng)")
     # Let all agents set their efforts if t ≥ 2
     t ≥ 2 && set_efforts!(contest, t, rng=rng)
     # Compute the utilities of all the agents
@@ -91,6 +95,7 @@ function step!(contest::TullockContest, t::Int; rng)
     latest_efforts = contest.efforts[:, t]  # the effort in round t for each agent
     winner = sample(rng, Weights(latest_efforts))
     contest.winners[winner, t] = true
+    # println("The winner is $(winner)")
     return nothing
 end
 
@@ -103,9 +108,11 @@ Note: the Nash gap is not monotonically decreasing, but the dynamics terminates 
 the gap drops below ε for the first time.
 """
 function run!(contest::TullockContest; ε=-1.0, rng=Random.default_rng())
+    # println(rng)
     T = num_rounds(contest)
     t = 1
     while t ≤ T && nash_gap(contest, t) > ε
+        # println("Round $(t):")
         step!(contest, t; rng=rng)
         t += 1
     end

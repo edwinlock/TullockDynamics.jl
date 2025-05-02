@@ -1,7 +1,8 @@
 using TullockDynamics
-using StableRNGs
+import Random
+Random.seed!(123456789)
 
-rng = StableRNG(123456789)
+rng = Random.default_rng()
 
 linear_cost(x) = x
 χ = 0.01
@@ -16,11 +17,7 @@ contest = TullockContest(agents, initial_efforts, T)
 
 run!(contest, rng=rng)
 
-# final_efforts(contest)
+println(final_efforts(contest))
 
 visualise(contest)
 
-
-# using StatsBase
-# rng = StableRNG(123456789)
-# sample(rng, Weights([1,5,2]))

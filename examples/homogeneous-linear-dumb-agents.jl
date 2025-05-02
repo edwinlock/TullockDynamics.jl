@@ -1,4 +1,7 @@
 using TullockDynamics
+using StableRNGs
+
+rng = StableRNG(123456789)
 
 linear_cost(x) = x
 
@@ -13,7 +16,7 @@ n = 2  # number of agents
 T = 1000
 χ = 0.05
 contest = generate_MLE_agent_contest(n, T; χ = χ)
-run!(contest)
+run!(contest, rng=rng)
 
 final_efforts(contest)
 
