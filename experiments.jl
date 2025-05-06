@@ -1,8 +1,6 @@
 using DataFrames
 using Random
-using StableRNGs
 
-rng = StableRNG(123456789)
 
 function run_experiments(outfile; estimators, xvals, pvals, αvals, χvals, hvals, ε=0.01)
     df = DataFrame()

@@ -1,16 +1,18 @@
 """
 Implementation of maximum likelihood estimator, given own `efforts` and `wins`.
 """
-function max_likelihood_estimator(; own_efforts::Vector{Float64}, wins::Vector{Bool}, _ignore...)::Float64
+function max_likelihood_estimator(;
+        own_efforts::Vector{Float64},
+        wins::Vector{Bool},
+        cost::Function,
+        _ignore...)::Float64
     w = sum(wins)  # compute number of wins
-    # Deal with edge case of zero wins
-    w == 0 && return 1  # TODO: discuss with Abheek and Sonja!
+    # Edge case of zero wins: return highest x for which cost doesn't exceed payoff 1.
+    w == 0 && return max_effort(cost)
     # Solve sum(x[i] / (x[i] + y)) = w for y:
     # Define strictly decreasing function for root finding
     f(y) = sum(x / (x + y) for x in own_efforts) - w
     return find_root(f, 0.0)
-    # return find_zero(f, (0.0, Inf))
-    # return find_zero(f, 0.0)
 end
 
 
@@ -28,18 +30,20 @@ function deterministic_max_likelihood_estimator(;
     # Define strictly decreasing function for root finding
     f(y) = sum(x / (x + y) for x in own_efforts) - w
     return find_root(f, 0.0)
-    # return find_zero(f, (0.0, Inf))
-    # return find_zero(f, 0.0)
 end
 
 
 """
 Implementation of "dumb" estimate, given own `efforts' and `wins`.
 """
-function dumb_estimator(; own_efforts::Vector{Float64}, wins::Vector{Bool}, _ignore...)::Float64
+function dumb_estimator(;
+        own_efforts::Vector{Float64},
+        wins::Vector{Bool},
+        cost::Function,
+        _ignore...)::Float64
     w = sum(wins)  # compute number of wins
-    # Deal with edge case of zero wins
-    w == 0 && return 1  # TODO: discuss with Abheek and Sonja!
+    # Edge case of zero wins: return highest x for which cost doesn't exceed payoff 1.
+    w == 0 && return max_effort(cost)
     num_rounds = length(own_efforts)
     avg_effort = sum(x for x ∈ own_efforts) / num_rounds
     # Throw error in case of zero effort
@@ -54,17 +58,35 @@ end
 Implementation of full knowledge estimate, given own `efforts` and `total_efforts`,
 which simply returns the total effort of others in the last round.
 """
-function classic_estimator(; own_efforts::Vector{Float64}, total_efforts::Vector{Float64}, _ignore...)::Float64
+function classic_estimator(;
+        own_efforts::Vector{Float64},
+        total_efforts::Vector{Float64},
+        _ignore...)::Float64
     return total_efforts[end] - own_efforts[end]
 end
 
 
-
 """
 Implementation of Bayesian estimate, given own `efforts` and `wins`.
-
-TODO: Finish this!
 """
-function bayesian_estimator(; own_efforts::Vector{Float64}, wins::Int, _ignore...)
-    # TODO: Finish this.
+function bayesian_estimator(;
+        own_efforts::Vector{Float64},
+        wins::Vector{Bool},
+        min_other_efforts::Float64,
+        max_other_efforts::Float64,
+        _ignore...
+    )
+    w = sum(wins)  # compute number of wins
+    lb, ub = min_other_efforts, max_other_efforts
+    # Hard-code the uniform distribution on domain (lb, ub)
+    initial_pdf(y) = lb ≤ y ≤ ub ? 1. / (ub - lb) : 0.
+    # Determine the unnormalised estimator f
+    f(y,p) = exp( w*log(y)  + log(initial_pdf(y)) - sum(log(x + y) for x ∈ own_efforts) )
+    # Compute the integral of f on domain [lb, ub] to normalise f
+    domain = (lb, ub)
+    prob = IntegralProblem(f, domain)
+    M = solve(prob, QuadGKJL()).u
+    # Define the normalised estimator μ
+    μ(y) = lb ≤ y ≤ ub ? f(y,0) / M : 0.
+    return μ
 end

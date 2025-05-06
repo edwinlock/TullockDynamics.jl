@@ -10,18 +10,18 @@ import Random
 using StatsBase
 
 """Set efforts of all agents in round `t` of TC `contest`."""
-function set_efforts!(contest::TullockContest, t::Int; rng)
-    # println("The RNG for set_efforts! is $(rng)")
+function set_efforts!(contest::TullockContest, t::Int)
+    min_total_efforts = sum(agent.χ for agent in contest.agents)
+    max_total_efforts = sum(agent.max_effort for agent in contest.agents)
     @assert t ≥ 2 "In order to update efforts, the round must be t ≥ 2."
     # Run through all agents and set their efforts in round t
     Threads.@threads for i ∈ eachindex(contest.agents)
         agent = contest.agents[i]
-        # println("Agent $(i)")
         # Flip biased coin to determine whether agent updates their effort
-        coin = rand(rng)
+        coin = rand()
         if coin >= agent.p(t)  # repeat same effort as in previous round
             contest.efforts[i,t] = contest.efforts[i, t-1]
-        else  # 
+        else 
             # Retrieve data within memory window for estimator
             mem_win = agent.h(t)  # get memory window as list or range
             own_efforts = contest.efforts[i, mem_win]
@@ -31,14 +31,19 @@ function set_efforts!(contest::TullockContest, t::Int; rng)
             est = agent.estimator(  # estimate of total effort of others
                 own_efforts=own_efforts,
                 total_efforts=total_efforts,
-                wins=wins
+                wins=wins,
+                min_other_efforts=min_total_efforts - agent.χ,
+                max_other_efforts=max_total_efforts - agent.max_effort,
             )
+            display(plot(est, 0, 1))
             # Agent makes their move
-            br = best_response(agent, est)
+            br = best_response(agent, est;
+                min_other_efforts=min_total_efforts - agent.χ,
+                max_other_efforts=max_total_efforts - agent.max_effort,
+            )
             prev_effort = contest.efforts[i, t-1]
             x = agent.α(t) * br + (1-agent.α(t)) * prev_effort
             contest.efforts[i,t] = x
-            # println("Estimate $(est) and new effort $(x)")
         end
     end
     return nothing
@@ -83,19 +88,17 @@ end
 Run round `t` of TC `contest`. This involves getting agents to update their
 efforts, and then determining a winner.
 """
-function step!(contest::TullockContest, t::Int; rng)
-    # println("The RNG for step! is $(rng)")
+function step!(contest::TullockContest, t::Int)
     # Let all agents set their efforts if t ≥ 2
-    t ≥ 2 && set_efforts!(contest, t, rng=rng)
+    t ≥ 2 && set_efforts!(contest, t)
     # Compute the utilities of all the agents
     set_utilities!(contest, t::Int)
     # Compute the Nash gap of each agent
     set_nash_gap!(contest, t::Int)
     # Determine a winner
     latest_efforts = contest.efforts[:, t]  # the effort in round t for each agent
-    winner = sample(rng, Weights(latest_efforts))
+    winner = sample(Weights(latest_efforts))
     contest.winners[winner, t] = true
-    # println("The winner is $(winner)")
     return nothing
 end
 
@@ -107,13 +110,11 @@ Run the contest until the maximum number of rounds is reached or the Nash gap dr
 Note: the Nash gap is not monotonically decreasing, but the dynamics terminates when
 the gap drops below ε for the first time.
 """
-function run!(contest::TullockContest; ε=-1.0, rng=Random.default_rng())
-    # println(rng)
+function run!(contest::TullockContest; ε=-1.0)
     T = num_rounds(contest)
     t = 1
     while t ≤ T && nash_gap(contest, t) > ε
-        # println("Round $(t):")
-        step!(contest, t; rng=rng)
+        step!(contest, t)
         t += 1
     end
     return nothing
