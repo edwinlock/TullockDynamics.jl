@@ -8,7 +8,7 @@ function max_likelihood_estimator(;
         _ignore...)::Float64
     w = sum(wins)  # compute number of wins
     # Edge case of zero wins: return highest x for which cost doesn't exceed payoff 1.
-    w == 0 && return max_effort(cost)
+    w == 0 && return max_agent_effort(cost)
     # Solve sum(x[i] / (x[i] + y)) = w for y:
     # Define strictly decreasing function for root finding
     f(y) = sum(x / (x + y) for x in own_efforts) - w
@@ -43,7 +43,7 @@ function dumb_estimator(;
         _ignore...)::Float64
     w = sum(wins)  # compute number of wins
     # Edge case of zero wins: return highest x for which cost doesn't exceed payoff 1.
-    w == 0 && return max_effort(cost)
+    w == 0 && return max_agent_effort(cost)
     num_rounds = length(own_efforts)
     avg_effort = sum(x for x ∈ own_efforts) / num_rounds
     # Throw error in case of zero effort

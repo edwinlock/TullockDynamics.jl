@@ -20,6 +20,12 @@ end
 
 
 """
+Convenience constructor to create an agent with max_effort set automatically.
+"""
+Agent(est, cost, p, α, h, χ) = Agent(est, cost, p, α, h, χ, max_agent_effort(cost))
+
+
+"""
 Convenience constructor to create an agent with fixed values for
 p, α and h in each round. Here h is the size of the history window.
 """
@@ -30,8 +36,8 @@ function Agent(estimator::Function, cost::Function, p::Float64, α::Float64, h::
     p_fn(t) = p
     h_fn(t) = max(1, t-h):t-1
     α_fn(t) = α
-    max_effort = max_effort(cost)
-    return Agent(estimator, cost, p_fn, α_fn, h_fn, χ, max_effort)
+    max_eff = max_agent_effort(cost)
+    return Agent(estimator, cost, p_fn, α_fn, h_fn, χ, max_eff)
 end
 
 
@@ -196,5 +202,5 @@ function BayesianAgent(cost; χ=0.01)
     p(t) = 1  # plays in every round
     α(t) = 1  # commits fully to best response (no interpolation)
     h(t) = 1:t-1  # access to entire history
-    return Agent(estimator, cost, p, α, h, χ, max_effort(cost))
+    return Agent(estimator, cost, p, α, h, χ, max_agent_effort(cost))
 end
