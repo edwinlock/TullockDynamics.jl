@@ -59,7 +59,7 @@ Recall that the reward is normalised to 1, so the agent will never
 want to make an effort with a cost greater than 1. Hence, solve
 cost(x) = 1 for x using our binary search root finder.
 """
-max_effort(cost) = find_root(x->1-cost(x), 0.0)
+max_effort(cost::Function) = find_root(x->1-cost(x), 0.0)
 
 
 """
