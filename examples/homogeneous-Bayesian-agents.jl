@@ -1,6 +1,5 @@
 using Revise
 using TullockDynamics
-using Plots
 
 # cost(x) = x
 cost(x) = 0.8x^1.001
@@ -13,7 +12,7 @@ end
 
 # Set parameters
 n = 3  # number of agents
-T = 1000
+T = 100
 χ = 0.05
 contest = generate_Bayesian_agent_contest(n, T; χ = χ)
 run!(contest)
@@ -23,6 +22,7 @@ visualise(contest, ylims=(0,0.3))
 
 # # Debugging code
 # # We want to look at the estimator PDFs of agent i in time step t
+# using Plots
 # min_total_efforts = sum(agent.χ for agent in contest.agents)
 # max_total_efforts = sum(agent.max_effort for agent in contest.agents)
 

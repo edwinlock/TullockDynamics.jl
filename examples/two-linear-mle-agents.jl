@@ -9,7 +9,7 @@ agents = [MLEAgent(linear_cost; χ=χ), MLEAgent(linear_cost; χ=χ)]
 
 initial_efforts = [rand(), rand()]
 
-T = 10
+T = 100
 
 contest = TullockContest(agents, initial_efforts, T)
 

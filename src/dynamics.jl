@@ -30,6 +30,7 @@ function set_efforts!(contest::TullockContest, t::Int)
                 own_efforts=own_efforts,
                 total_efforts=total_efforts,
                 wins=wins,
+                cost=agent.cost,
                 min_other_efforts=min_total_efforts - agent.χ,
                 max_other_efforts=max_total_efforts - agent.max_effort,
             )

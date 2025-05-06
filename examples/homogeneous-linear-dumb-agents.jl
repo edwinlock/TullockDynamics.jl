@@ -12,10 +12,10 @@ end
 n = 2  # number of agents
 T = 1000
 χ = 0.05
-contest = generate_MLE_agent_contest(n, T; χ = χ)
+contest = generate_dumb_agent_contest(n, T; χ = χ)
 run!(contest)
 
 final_efforts(contest)
 
-plot(contest, ylims=(0,0.3))
+visualise(contest)
 

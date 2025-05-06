@@ -11,7 +11,7 @@ end
 
 # Set parameters
 n = 5  # number of agents
-T = 10
+T = 100
 χ = 0.05
 contest = generate_det_MLE_agent_contest(n, T; χ = χ)
 run!(contest)
