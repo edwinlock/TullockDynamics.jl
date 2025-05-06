@@ -76,12 +76,12 @@ function bayesian_estimator(;
         max_other_efforts::Float64,
         _ignore...
     )
-    w = sum(wins)  # compute number of wins
+    l = count(==(0), wins)  # count number of losses
     lb, ub = min_other_efforts, max_other_efforts
     # Hard-code the uniform distribution on domain (lb, ub)
     initial_pdf(y) = lb ≤ y ≤ ub ? 1. / (ub - lb) : 0.
     # Determine the unnormalised estimator f
-    f(y,p) = exp( w*log(y)  + log(initial_pdf(y)) - sum(log(x + y) for x ∈ own_efforts) )
+    f(y,p) = exp( l*log(y)  + log(initial_pdf(y)) - sum(log(x + y) for x ∈ own_efforts) )
     # Compute the integral of f on domain [lb, ub] to normalise f
     domain = (lb, ub)
     prob = IntegralProblem(f, domain)

@@ -23,10 +23,8 @@ function set_efforts!(contest::TullockContest, t::Int)
             contest.efforts[i,t] = contest.efforts[i, t-1]
         else 
             # Retrieve data within memory window for estimator
-            mem_win = agent.h(t)  # get memory window as list or range
-            own_efforts = contest.efforts[i, mem_win]
-            total_efforts = vec(sum(contest.efforts[:, mem_win]; dims=1))
-            wins = contest.winners[i, mem_win]
+            mem_window = agent.h(t)  # get memory window as list or range
+            own_efforts, total_efforts, wins = retrieve_estimator_data(i, mem_window, contest)
             # Determine estimate
             est = agent.estimator(  # estimate of total effort of others
                 own_efforts=own_efforts,
@@ -35,7 +33,6 @@ function set_efforts!(contest::TullockContest, t::Int)
                 min_other_efforts=min_total_efforts - agent.χ,
                 max_other_efforts=max_total_efforts - agent.max_effort,
             )
-            display(plot(est, 0, 1))
             # Agent makes their move
             br = best_response(agent, est;
                 min_other_efforts=min_total_efforts - agent.χ,
@@ -47,6 +44,14 @@ function set_efforts!(contest::TullockContest, t::Int)
         end
     end
     return nothing
+end
+
+
+function retrieve_estimator_data(i, mem_window, contest::TullockContest)
+    own_efforts = contest.efforts[i, mem_window]
+    total_efforts = vec(sum(contest.efforts[:, mem_window]; dims=1))
+    wins = contest.winners[i, mem_window]
+    return own_efforts, total_efforts, wins
 end
 
 
@@ -113,9 +118,11 @@ the gap drops below ε for the first time.
 function run!(contest::TullockContest; ε=-1.0)
     T = num_rounds(contest)
     t = 1
+    p = ProgressMeter.Progress(T)
     while t ≤ T && nash_gap(contest, t) > ε
         step!(contest, t)
         t += 1
+        ProgressMeter.next!(p)
     end
     return nothing
 end

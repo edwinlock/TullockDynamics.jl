@@ -20,7 +20,7 @@ export utility, best_response, nash_gap
 export TullockContest
 export nash_gap, numrounds
 # Exports from dynamics.jl
-export set_efforts!, set_utilities!, step!, run!
+export set_efforts!, set_utilities!, step!, run!, retrieve_estimator_data
 # Exports from estimators.jl
 export max_likelihood_estimator, deterministic_max_likelihood_estimator, dumb_estimator, bayesian_estimator, classic_estimator
 # Exports from utils.jl
