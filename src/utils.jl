@@ -1,3 +1,5 @@
+const MAXGAP = 2^(-20)  # TODO: decide on final magic number
+
 """
 Implement binary search root-finding method for function `f` on interval [l, ∞).
 This method is quite slow but should be robust.
@@ -11,7 +13,7 @@ function find_root(f::Function, l::Float64)::Float64
     # Phase 1: find appropriate upper bound by repeatedly squaring
     while f(upper) > 0; upper *= upper; end
     # Phase 2: binary search between upper and lower bound
-    while upper - lower > 2^(-32)  # TODO: decide on final magic number
+    while upper - lower > MAXGAP
         mid = (upper + lower) / 2
         f(mid) == 0 && return mid
         f(mid) > 0 && (lower = mid)

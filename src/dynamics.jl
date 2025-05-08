@@ -116,14 +116,15 @@ Run the contest until the maximum number of rounds is reached or the Nash gap dr
 Note: the Nash gap is not monotonically decreasing, but the dynamics terminates when
 the gap drops below ε for the first time.
 """
-function run!(contest::TullockContest; ε=-1.0)
+function run!(contest::TullockContest; ε=-1.0, showprogress=false)
     T = num_rounds(contest)
     t = 1
-    p = ProgressMeter.Progress(T)
-    while t ≤ T && nash_gap(contest, t) > ε
+    showprogress && (p = ProgressMeter.Progress(T))
+    while t ≤ T
         step!(contest, t)
+        nash_gap(contest, t) ≤ ε && break
         t += 1
-        ProgressMeter.next!(p)
+        showprogress && ProgressMeter.next!(p)
     end
-    return nothing
+    return t
 end

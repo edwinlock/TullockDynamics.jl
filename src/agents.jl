@@ -1,43 +1,42 @@
 """
 An agent has multiple attributes (all immutable)
+estimator   — function for estimating opponents' total efforts, is given agent efforts, total effort, and vector of wins
 cost        — is a function of agent's effort
 p           — probability that agent updates their effort, is a function of the round t
-h           — the size of the history window, as a function of round t. Return value must be subset of range 1:t-1.
 α           — step size, as a function of round t
-estimator   — function for estimating opponents' total efforts, is given agent efforts, total effort, and vector of wins
 χ           — lower bound on efforts that agent is permitted to make
 max_effort  - upper bound on efforts that agent is permitted to make
+h           — the size of the history window, as a function of round t. Return value must be subset of range 1:t-1.
 """
 struct Agent
     estimator::Function
     cost::Function
     p::Function
     α::Function
-    h::Function
     χ::Float64
     max_effort::Float64
+    h::Function
 end
 
 
 """
 Convenience constructor to create an agent with max_effort set automatically.
 """
-Agent(est, cost, p, α, h, χ) = Agent(est, cost, p, α, h, χ, max_agent_effort(cost))
+Agent(est, cost, p, α, χ, h) = Agent(est, cost, p, α, χ, max_agent_effort(cost), h)
 
 
 """
 Convenience constructor to create an agent with fixed values for
 p, α and h in each round. Here h is the size of the history window.
 """
-function Agent(estimator::Function, cost::Function, p::Float64, α::Float64, h::Int, χ::Float64)
+function Agent(estimator::Function, cost::Function, p::Float64, α::Float64, χ::Float64, h::Int)
     @assert 0 ≤ p ≤ 1 "Probability p must lie between 0 and 1."
     @assert 0 ≤ α ≤ 1 "Convex coefficient α must lie between 0 and 1."
     @assert h ≥ 1 "History window size must be positive."
     p_fn(t) = p
     h_fn(t) = max(1, t-h):t-1
     α_fn(t) = α
-    max_eff = max_agent_effort(cost)
-    return Agent(estimator, cost, p_fn, α_fn, h_fn, χ, max_eff)
+    return Agent(estimator, cost, p_fn, α_fn, χ, h_fn)
 end
 
 
@@ -45,10 +44,10 @@ end
 Convenience constructor to create an agent with cost function cost(x) = ax^r
 with parameters a and r, as well as with fixed values for p, α and h in each round.
 """
-function Agent(estimator, p::Float64, α::Float64, h::Int, χ::Float64, a::Float64, r::Float64)
+function Agent(estimator, p::Float64, α::Float64, χ::Float64, h::Int, a::Float64, r::Float64)
     @assert r ≥ 1 "Exponent of cost function must be ≥ 1."
     cost(x) = a * x^r
-    return Agent(estimator, cost, p_fn, α_fn, h_fn, χ)
+    return Agent(estimator, cost, p, α, χ, h)
 end
 
 
@@ -137,7 +136,7 @@ function MLEAgent(cost; χ=0.01)
     p(t) = 1  # plays in every round
     α(t) = 1  # commits fully to best response (no interpolation)
     h(t) = 1:t-1  # access to entire history
-    return Agent(estimator, cost, p, α, h, χ)
+    return Agent(estimator, cost, p, α, χ, h)
 end
 
 
@@ -153,7 +152,7 @@ function DetMLEAgent(cost; χ=0.01)
     p(t) = 1  # plays in every round
     α(t) = 1  # commits fully to best response (no interpolation)
     h(t) = 1:t-1  # access to entire history
-    return Agent(estimator, cost, p, α, h, χ)
+    return Agent(estimator, cost, p, α, χ, h)
 end
 
 
@@ -169,7 +168,7 @@ function DumbAgent(cost; χ=0.01)
     p(t) = 1  # plays in every round
     α(t) = 1  # commits fully to best response (no interpolation)
     h(t) = 1:t-1  # access to entire history
-    return Agent(estimator, cost, p, α, h, χ)
+    return Agent(estimator, cost, p, α, χ, h)
 end
 
 
@@ -185,7 +184,7 @@ function StandardAgent(cost; α=1, χ=0.01)
     p(t) = 1  # plays in every round
     step(t) = 1  # commits fully to best response (no interpolation)
     h(t) = 1:t-1  # access to entire history
-    return Agent(estimator, cost, p, step, h, χ)
+    return Agent(estimator, cost, p, step, χ, h)
 end
 
 
@@ -202,5 +201,5 @@ function BayesianAgent(cost; χ=0.01)
     p(t) = 1  # plays in every round
     α(t) = 1  # commits fully to best response (no interpolation)
     h(t) = 1:t-1  # access to entire history
-    return Agent(estimator, cost, p, α, h, χ, max_agent_effort(cost))
+    return Agent(estimator, cost, p, α, χ, h)
 end
