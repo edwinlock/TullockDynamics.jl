@@ -119,12 +119,15 @@ the gap drops below ε for the first time.
 function run!(contest::TullockContest; ε=-1.0, showprogress=false)
     T = num_rounds(contest)
     t = 1
-    showprogress && (p = ProgressMeter.Progress(T))
+    # prog = Progress(T, enabled=showprogress)
+    prog = ProgressThresh(ε; desc="Minimizing:", enabled=showprogress)
     while t ≤ T
         step!(contest, t)
-        nash_gap(contest, t) ≤ ε && break
+        gap = nash_gap(contest, t)
+        gap ≤ ε && break
         t += 1
-        showprogress && ProgressMeter.next!(p)
+        # ProgressMeter.next!(prog)
+        # update!(p, gap)
     end
     return t
 end

@@ -1,0 +1,43 @@
+# function run_experiment(;
+#         num_agents,
+#         effort_rows,
+#         estimators,
+#         pvals,
+#         αvals,
+#         χvals,
+#         hvals,
+#         avals,
+#         rvals,
+#         reps::Int
+#     )
+#     dfs = []
+#     for e in estimators
+#         @info "Running experiments with $(e) estimator."
+#         for n in num_agents
+#             @info "Starting n=$(n)."
+#             iter = Iterators.product(1:reps, effort_rows, pvals, αvals, χvals, hvals, avals, rvals)
+#             progressmeter = Progress(length(iter))
+#             chunks = Iterators.partition(iter, length(iter) ÷ Threads.nthreads())
+#             tasks = map(chunks) do chunk
+#                 Threads.@spawn run_experiment_chunk(e, n, chunk, progressmeter)
+#             end
+#             chunk_dfs = fetch.(tasks)
+#             push!(dfs, chunk_dfs...)
+#         end
+#     end
+#     return vcat(dfs...)
+# end
+
+
+# function run_experiment_chunk(e, n, chunk, progressmeter)
+#     df = create_df()
+#     for (rep, row, p, α, χ, h, a, r) ∈ chunk
+#         # Retrieve efforts and run instance
+#         x = get_efforts(row, n)
+#         result = run_instance(e, x, p, α, χ, h, a, r)
+#         # Add results as a row in data frame
+#         push!(df, [n row rep e p α χ h a r result])
+#         next!(progressmeter)
+#     end
+#     return df
+# end

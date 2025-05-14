@@ -48,8 +48,7 @@ function dumb_estimator(;
     avg_effort = sum(x for x ∈ own_efforts) / num_rounds
     # Throw error in case of zero effort
     @assert avg_effort > 0 "Average effort cannot be 0!"
-    win_fraction = w / num_rounds
-    y = avg_effort / win_fraction - avg_effort
+    y = (num_rounds / w - 1.0) * avg_effort
     return y
 end
 
