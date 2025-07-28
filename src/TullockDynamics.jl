@@ -89,7 +89,7 @@ include("estimators.jl")
 include("utils.jl")
 
 # Exports from agents.jl
-export Agent, MLEAgent, DetMLEAgent, DumbAgent, BayesianAgent
+export Agent, MLEAgent, DetMLEAgent, DumbAgent, BayesianAgent, StandardAgent
 export utility, best_response, nash_gap, max_agent_effort
 export clear_agent_caches!, clear_estimator_cache!, clear_best_response_cache!
 # Exports from contests.jl
