@@ -97,7 +97,6 @@ function best_response(agent::Agent, pdf::Function;
     )
     χ = agent.χ
     domain = [min_other_efforts, max_other_efforts]
-    println("Domain is $(domain)")
     
     # Define the expected utility function
     function φ(z)
