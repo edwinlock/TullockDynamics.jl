@@ -26,12 +26,12 @@
         
         # Test workspace is properly initialized
         @test contest.workspace isa TullockDynamics.ContestWorkspace
-        @test length(contest.workspace.own_efforts) == 3
+        @test length(contest.efforts[:,1]) == 3
         @test contest.workspace.weights_obj isa StatsBase.Weights
         @test contest.workspace.min_total_efforts > 0.0
         @test contest.workspace.max_total_efforts >= contest.workspace.min_total_efforts
-        @test length(contest.workspace.min_other_bounds) == 3
-        @test length(contest.workspace.max_other_bounds) == 3
+        @test length(contest.workspace.min_other_efforts) == 3
+        @test length(contest.workspace.max_other_efforts) == 3
         @test contest.workspace.total_effort == 0.0
     end
     
@@ -111,16 +111,13 @@
         @test workspace.max_total_efforts ≈ expected_max_total
         
         # Test per-agent bounds
-        # Agent 1: min_other = max(0.001, min_total - max_effort_1) = max(0.001, 0.05 - 1.0) ≈ 0.001
-        #          max_other = max(0.01, max_total - χ_1) = max(0.01, 2.0 - 0.02) = 1.98
-        @test workspace.min_other_bounds[1] ≈ 0.001
-        @test workspace.max_other_bounds[1] ≈ 1.98
+        # Agent 1: min_other = 0.05 - 1.0 = -0.95, max_other = 2.0 - 0.02 = 1.98
+        @test workspace.min_other_efforts[1] ≈ -0.95
+        @test workspace.max_other_efforts[1] ≈ 1.98
         
-        # Agent 2: similar calculation
-        # Agent 2: min_other = max(0.001, 0.05 - 1.0) = 0.001
-        #          max_other = max(0.01, 2.0 - 0.03) = 1.97
-        @test workspace.min_other_bounds[2] ≈ 0.001  
-        @test workspace.max_other_bounds[2] ≈ 1.97
+        # Agent 2: min_other = 0.05 - 1.0 = -0.95, max_other = 2.0 - 0.03 = 1.97
+        @test workspace.min_other_efforts[2] ≈ -0.95  
+        @test workspace.max_other_efforts[2] ≈ 1.97
     end
     
     @testset "ContestWorkspace with finite max_effort" begin
@@ -140,14 +137,14 @@
         @test workspace.min_total_efforts ≈ expected_min_total
         @test workspace.max_total_efforts ≈ expected_max_total
         
-        # Agent 1: min_other = max(0.001, 0.03 - 2.0) = max(0.001, -1.97) = 0.001
-        #          max_other = max(0.01, 5.0 - 0.01) = max(0.01, 4.99) = 4.99
-        @test workspace.min_other_bounds[1] ≈ 0.001
-        @test workspace.max_other_bounds[1] ≈ 4.99
+        # Agent 1: min_other = 0.03 - 0.01 = 0.02
+        #          max_other = 5.0 - 2.0 = 3.0
+        @test workspace.min_other_efforts[1] ≈ 0.02
+        @test workspace.max_other_efforts[1] ≈ 3.0
         
-        # Agent 2: min_other = max(0.001, 0.03 - 3.0) = 0.001
-        #          max_other = max(0.01, 5.0 - 0.02) = 4.98
-        @test workspace.min_other_bounds[2] ≈ 0.001
-        @test workspace.max_other_bounds[2] ≈ 4.98
+        # Agent 2: min_other = 0.03 - 0.02 = 0.01
+        #          max_other = 5.0 - 3.0 = 2.0
+        @test workspace.min_other_efforts[2] ≈ 0.01
+        @test workspace.max_other_efforts[2] ≈ 2.0
     end
 end

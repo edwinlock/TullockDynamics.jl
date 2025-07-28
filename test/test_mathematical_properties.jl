@@ -171,8 +171,8 @@ using StatsBase
             @test bayesian_func isa Function
             
             # Test non-negativity
-            test_points = range(contest.workspace.min_other_bounds[agent_idx], 
-                               contest.workspace.max_other_bounds[agent_idx], 
+            test_points = range(contest.workspace.min_other_efforts[agent_idx], 
+                               contest.workspace.max_other_efforts[agent_idx], 
                                length=10)
             
             for y in test_points
@@ -184,8 +184,8 @@ using StatsBase
             end
             
             # Test boundary behavior
-            lb = contest.workspace.min_other_bounds[agent_idx]
-            ub = contest.workspace.max_other_bounds[agent_idx]
+            lb = contest.workspace.min_other_efforts[agent_idx]
+            ub = contest.workspace.max_other_efforts[agent_idx]
             
             if isfinite(lb) && isfinite(ub)
                 @test bayesian_func(lb - 0.1) ≈ 0.0

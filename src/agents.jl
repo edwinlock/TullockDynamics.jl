@@ -128,21 +128,9 @@ const ALWAYS_PLAY = (t::Int) -> 1.0::Float64
 const FULL_STEP = (t::Int) -> 1.0::Float64
 const FULL_HISTORY = (t::Int) -> 1:t-1
 
-# Best response caching system (estimator caching removed as ineffective)
-const BEST_RESPONSE_CACHE = Dict{Tuple, Float64}()
-
-"""
-Clear the best response cache used for optimal effort calculations.
-Main benefit: reuse computations when no agents update in a round.
-"""
-function clear_best_response_cache!()
-    empty!(BEST_RESPONSE_CACHE)
-    return nothing
-end
-
 # Deprecated aliases for backwards compatibility
-clear_agent_caches! = clear_best_response_cache!
-clear_estimator_cache!() = nothing  # No-op since estimator caching removed
+clear_agent_caches!() = nothing
+clear_estimator_cache!() = nothing
 
 
 ### Constructors for specific kinds of agents

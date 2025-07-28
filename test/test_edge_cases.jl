@@ -107,7 +107,7 @@
         @test bayesian_func isa Function
         
         # Test density at a few points
-        test_y = contest.workspace.min_other_bounds[1] + 0.1
+        test_y = contest.workspace.min_other_efforts[1] + 0.1
         if isfinite(test_y)
             density = bayesian_func(test_y)
             @test density >= 0.0
@@ -221,13 +221,13 @@
         @test workspace.min_total_efforts ≈ expected_min_total
         @test workspace.max_total_efforts ≈ expected_max_total
         
-        # Check individual bounds
-        # Agent 1: min_other = max(0.001, 0.07 - 5.0) = 0.001, max_other = max(0.01, 8.0 - 0.05) = 7.95
-        @test workspace.min_other_bounds[1] ≈ 0.001
-        @test workspace.max_other_bounds[1] ≈ 7.95
+        # Check individual bounds (corrected calculation: simple subtraction)
+        # Agent 1: min_other = 0.07 - 0.05 = 0.02, max_other = 8.0 - 5.0 = 3.0
+        @test workspace.min_other_efforts[1] ≈ 0.02
+        @test workspace.max_other_efforts[1] ≈ 3.0
         
-        # Agent 2: min_other = max(0.001, 0.07 - 3.0) = 0.001, max_other = max(0.01, 8.0 - 0.02) = 7.98
-        @test workspace.min_other_bounds[2] ≈ 0.001
-        @test workspace.max_other_bounds[2] ≈ 7.98
+        # Agent 2: min_other = 0.07 - 0.02 = 0.05, max_other = 8.0 - 3.0 = 5.0
+        @test workspace.min_other_efforts[2] ≈ 0.05
+        @test workspace.max_other_efforts[2] ≈ 5.0
     end
 end

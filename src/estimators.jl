@@ -1,13 +1,3 @@
-# Cache for expensive Bayesian integrations to improve performance
-const BAYESIAN_INTEGRATION_CACHE = Dict{Tuple, Float64}()
-
-"""
-Clear the Bayesian integration cache. Useful for testing or memory management.
-"""
-function clear_bayesian_cache!()
-    empty!(BAYESIAN_INTEGRATION_CACHE)
-    return nothing
-end
 
 """
     max_likelihood_estimator(contest::TullockContest, agent_idx::Int, window; _ignore...) -> Float64
@@ -35,15 +25,20 @@ Solves the equation `∑(xᵢ/(xᵢ + y)) = w` for `y`, where:
 function max_likelihood_estimator(
         contest::TullockContest,
         agent_idx::Int,
-        window;
-        _ignore...)::Float64
-    # Compute number of wins directly from contest data
-    w = sum(contest.winners[agent_idx, window])
+        window
+    )::Float64
+
+    # Compute number of wins
+    w = 0
+    for t ∈ window
+        w += contest.winners[agent_idx, t]
+    end
+
     # Edge case of zero wins: return highest x for which cost doesn't exceed payoff 1.
     w == 0 && return max_agent_effort(contest.agents[agent_idx].cost)
     # Solve sum(x[i] / (x[i] + y)) = w for y:
     # Define strictly decreasing function for root finding
-    effort_values = contest.efforts[agent_idx, window]  # Direct indexing
+    effort_values = @view contest.efforts[agent_idx, window]  # Direct indexing
     
     # Check for edge case: if all effort values are zero
     if all(effort_values .== 0.0)
@@ -58,7 +53,7 @@ function max_likelihood_estimator(
         return max_agent_effort(contest.agents[agent_idx].cost)
     end
     
-    f(y) = sum(effort_values[i] / (effort_values[i] + y) for i in eachindex(effort_values)) - w
+    f(y) = sum(x / (x + y) for x in effort_values) - w
     
     # Verify f(small_positive) >= 0 before calling find_root
     if f(1e-10) < 0  # Use small positive value to avoid NaN at f(0)
@@ -96,13 +91,16 @@ This variant uses deterministic win probabilities rather than actual win outcome
 function deterministic_max_likelihood_estimator(
         contest::TullockContest,
         agent_idx::Int,
-        window;
-        _ignore...)::Float64
+        window
+    )::Float64
+
+    ws = contest.workspace
+
     # Compute expected number of wins directly
     w = 0.0
     for t in window
         own_effort = contest.efforts[agent_idx, t]
-        total_effort = sum(contest.efforts[:, t])
+        total_effort = ws.total_efforts[t]
         if total_effort > 0.0
             w += own_effort / total_effort
         else
@@ -112,7 +110,7 @@ function deterministic_max_likelihood_estimator(
     end
     # Solve sum(x[i] / (x[i] + y)) = w for y:
     # Define strictly decreasing function for root finding
-    effort_values = contest.efforts[agent_idx, window]
+    effort_values = @view contest.efforts[agent_idx, window]
     
     # Check for edge case: if all effort values are zero
     if all(effort_values .== 0.0)
@@ -127,8 +125,8 @@ function deterministic_max_likelihood_estimator(
         return max_agent_effort(contest.agents[agent_idx].cost)
     end
     
-    f(y) = sum(effort_values[i] / (effort_values[i] + y) for i in eachindex(effort_values)) - w
-    
+    f(y) = sum(x / (x + y) for x in effort_values) - w
+
     # Verify f(small_positive) >= 0 before calling find_root
     if f(1e-10) < 0  # Use small positive value to avoid NaN at f(0)
         # Function is always negative, return fallback
@@ -168,15 +166,29 @@ This is a simple, fast heuristic that doesn't use sophisticated statistical meth
 function dumb_estimator(
         contest::TullockContest,
         agent_idx::Int,
-        window;
-        _ignore...)::Float64
-    w = sum(contest.winners[agent_idx, window])  # compute number of wins
+        window
+    )::Float64
+    
+    # Compute number of wins
+    w = 0
+    for t ∈ window
+        w += contest.winners[agent_idx, t]
+    end
+
     # Edge case of zero wins: return highest x for which cost doesn't exceed payoff 1.
     w == 0 && return max_agent_effort(contest.agents[agent_idx].cost)
+
+    # Compute average effort
+    sumefforts = 0
+    for t ∈ window
+        sumefforts += contest.efforts[agent_idx, t]
+    end
     num_rounds = length(window)
-    avg_effort = sum(contest.efforts[agent_idx, window]) / num_rounds
+    avg_effort = sumefforts / num_rounds
+    
     # Throw error in case of zero effort
     @assert avg_effort > 0 "Average effort cannot be 0!"
+
     y = (num_rounds / w - 1.0) * avg_effort
     return y
 end
@@ -206,12 +218,13 @@ have access to this information.
 function classic_estimator(
         contest::TullockContest,
         agent_idx::Int,
-        window;
-        _ignore...)::Float64
-    last_round = window[end]
-    total_effort_last = sum(contest.efforts[:, last_round])
-    own_effort_last = contest.efforts[agent_idx, last_round]
-    return total_effort_last - own_effort_last
+        window
+    )::Float64
+
+    ws = contest.workspace
+
+    last_round = window[end]    
+    return ws.total_efforts[last_round] - contest.efforts[agent_idx, last_round]
 end
 
 
@@ -245,43 +258,34 @@ where:
 - The product reflects the likelihood of the observed outcomes
 
 # Performance Notes
-Uses numerical integration (QuadGKJL) to normalize the distribution. Results are cached
-based on agent parameters and effort history to significantly improve performance on
-repeated calls with similar parameters. Cache can be cleared with `clear_bayesian_cache!()`.
+Uses numerical integration (QuadGKJL) to normalize the distribution.
 """
 function bayesian_estimator(
         contest::TullockContest,
         agent_idx::Int,
-        window;
-        _ignore...
+        window
     )
-    # Count number of losses directly
-    l = count(==(0), contest.winners[agent_idx, window])
-    lb, ub = contest.workspace.min_other_bounds[agent_idx], contest.workspace.max_other_bounds[agent_idx]
-    
-    # Create cache key based on the parameters that affect the integration
-    # Use view to avoid copying the effort data when computing hash
+    # Compute number of losses
+    l = 0
+    for t ∈ window
+        l += 1 - contest.winners[agent_idx, t]
+    end
+
+    lb, ub = contest.workspace.min_other_efforts[agent_idx], contest.workspace.max_other_efforts[agent_idx]
+
+    # Get effort values for the window
     effort_values = @view contest.efforts[agent_idx, window]
-    cache_key = (agent_idx, l, lb, ub, hash(effort_values))
     
-    # Check if normalization constant is already cached
-    M = get(BAYESIAN_INTEGRATION_CACHE, cache_key, nothing)
-    
-    # Define helper functions once
+    # Hard-code the uniform distribution on domain (lb, ub)
     initial_pdf(y) = lb ≤ y ≤ ub ? 1. / (ub - lb) : 0.
     f(y,p) = exp( l*log(y)  + log(initial_pdf(y)) - sum(log(x + y) for x ∈ effort_values) )
     
-    if M === nothing
-        # Compute the integral of f on domain [lb, ub] to normalise f
-        domain = (lb, ub)
-        prob = IntegralProblem(f, domain)
-        M = solve(prob, QuadGKJL()).u
-        
-        # Cache the result for future use
-        BAYESIAN_INTEGRATION_CACHE[cache_key] = M
-    end
+    # Compute the integral of f on domain [lb, ub] to normalise f
+    domain = (lb, ub)
+    prob = IntegralProblem(f, domain)
+    M = solve(prob, QuadGKJL()).u
     
-    # Define the normalized estimator μ using cached normalization constant
+    # Define the normalized estimator μ
     μ(y) = lb ≤ y ≤ ub ? f(y,0) / M : 0.
     return μ
 end

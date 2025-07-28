@@ -9,12 +9,12 @@ function generate_MLE_agent_contest(n::Int, T::Int; χ)
 end
 
 # Set parameters
-n = 3 # number of agents
-T = 100
+n = 10 # number of agents
+T = 5000
 χ = 0.05
 contest = generate_MLE_agent_contest(n, T; χ = χ)
-run!(contest)
+@profview_allocs run!(contest)
 
-final_efforts(contest)
+# final_efforts(contest)
 
-visualise(contest)
+# visualise(contest)

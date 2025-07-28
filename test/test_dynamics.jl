@@ -13,6 +13,9 @@
         # Set some effort values for round 2
         contest.efforts[:, 2] = [0.2, 0.3, 0.25]
         
+        # Update workspace first (required for workspace-based implementation)
+        TullockDynamics.update_workspace!(contest, 2)
+        
         # Call set_utilities!
         TullockDynamics.set_utilities!(contest, 2)
         
@@ -39,6 +42,9 @@
         
         # Set efforts for round 3
         contest.efforts[:, 3] = [0.15, 0.35, 0.2]
+        
+        # Update workspace first (required for workspace-based implementation)
+        TullockDynamics.update_workspace!(contest, 3)
         
         # Call set_nash_gap!
         TullockDynamics.set_nash_gap!(contest, 3)
@@ -265,7 +271,7 @@
         
         # Check workspace dimensions match
         @test length(contest.workspace.own_efforts) == n_agents
-        @test length(contest.workspace.min_other_bounds) == n_agents
-        @test length(contest.workspace.max_other_bounds) == n_agents
+        @test length(contest.workspace.min_other_efforts) == n_agents
+        @test length(contest.workspace.max_other_efforts) == n_agents
     end
 end

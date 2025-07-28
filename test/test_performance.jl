@@ -146,8 +146,8 @@
         
         # Check workspace scales correctly
         @test length(contest_large.workspace.own_efforts) == n_agents
-        @test length(contest_large.workspace.min_other_bounds) == n_agents
-        @test length(contest_large.workspace.max_other_bounds) == n_agents
+        @test length(contest_large.workspace.min_other_efforts) == n_agents
+        @test length(contest_large.workspace.max_other_efforts) == n_agents
     end
     
     @testset "Repeated simulation performance" begin

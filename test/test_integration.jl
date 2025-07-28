@@ -126,8 +126,8 @@
         
         # Check workspace scales correctly
         @test length(contest.workspace.own_efforts) == n_agents
-        @test length(contest.workspace.min_other_bounds) == n_agents
-        @test length(contest.workspace.max_other_bounds) == n_agents
+        @test length(contest.workspace.min_other_efforts) == n_agents
+        @test length(contest.workspace.max_other_efforts) == n_agents
         
         # Check all data structures are correct size
         @test size(contest.efforts) == (n_agents, T)

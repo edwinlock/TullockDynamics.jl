@@ -11,11 +11,12 @@ function generate_Bayesian_agent_contest(n::Int, T::Int; χ)
 end
 
 # Set parameters
-n = 100  # number of agents
+n = 10  # number of agents
 T = 1000
 χ = 0.05
 contest = generate_Bayesian_agent_contest(n, T; χ = χ);
-@profview run!(contest)
+
+@time run!(contest)
 
 final_efforts(contest)
 visualise(contest, ylims=(0,0.3))

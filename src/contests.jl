@@ -4,21 +4,18 @@ using StatsBase
 Workspace for intermediate computations to avoid repeated allocations.
 """
 mutable struct ContestWorkspace
-    # Pre-allocated buffers for repeated use
-    own_efforts::Vector{Float64}        # Buffer for contest.efforts[:,t]
-    other_efforts::Vector{Float64}        # Buffer for the sum of total efforts of other agents, for each agent i
-    weights_obj::Weights{Float64, Float64, Vector{Float64}}
-
-    # Reusable variables  
-    total_effort::Float64               # sum(own_efforts) - computed once per round
+    # Pre-allocated buffers updated in every round
+    other_efforts::Matrix{Float64}          # Buffer for the total other efforts, for each agent i in each round
+    total_efforts::Vector{Float64}          # Total effort in each round
     
     # Pre-computed constants (computed once in constructor)
-    min_total_efforts::Float64          # sum(agent.χ for agent in agents)
-    max_total_efforts::Float64          # sum(agent.max_effort for agent in agents)
-    
-    # Per-agent pre-computed bounds (avoid repeated calculations)
-    min_other_bounds::Vector{Float64}   # max(0.001, min_total_efforts - agent.max_effort)
-    max_other_bounds::Vector{Float64}   # max(0.01, max_total_efforts - agent.χ)
+    min_total_efforts::Float64              # sum of agents' minimal efforts
+    max_total_efforts::Float64              # sum of agents' maximal efforts 
+    min_other_efforts::Vector{Float64}      # for each agent, sum of other agents' minimal efforts
+    max_other_efforts::Vector{Float64}      # for each agent, sum of other agents' maximal efforts
+
+    # Current round
+    current_round::Int
 end
 
 struct TullockContest
@@ -27,7 +24,7 @@ struct TullockContest
     winners::Matrix{Bool}
     utilities::Matrix{Float64}
     nash_gaps::Matrix{Float64}
-    workspace::ContestWorkspace         # Workspace for optimizations
+    workspace::ContestWorkspace
 end
 
 num_rounds(contest::TullockContest) = size(contest.efforts)[2]
@@ -101,27 +98,24 @@ function TullockContest(agents::Vector{Agent}, x::Vector{Float64}, T::Int)
     nash_gaps = zeros(num_agents, T)
     # Set initial efforts
     efforts[:,1] .= x
+    
+    # Initialize workspace
+    other_efforts_buffer = zeros(num_agents, T)
+    total_efforts_buffer = zeros(T)
     # Pre-compute constants for workspace
     min_total_efforts = sum(agent.χ for agent in agents)
     max_total_efforts = sum(agent.max_effort for agent in agents)
-    
-    # Pre-compute per-agent bounds to avoid repeated calculations
-    min_other_bounds = [max(0.001, min_total_efforts - agent.max_effort) for agent in agents]
-    max_other_bounds = [max(0.01, max_total_efforts - agent.χ) for agent in agents]
-    
-    # Initialize workspace
-    own_efforts_buffer = zeros(num_agents)
-    other_efforts_buffer = zeros(num_agents)
-    weights_obj = StatsBase.Weights(own_efforts_buffer)  # Create reusable Weights object
+    min_other_efforts = [min_total_efforts - agent.χ for agent in agents]
+    max_other_efforts = [max_total_efforts - agent.max_effort for agent in agents]
+    current_round = 0
     workspace = ContestWorkspace(
-        own_efforts_buffer,     # own_efforts buffer
-        other_efforts_buffer,   # other_efforts buffer  
-        weights_obj,            # reusable Weights object
-        0.0,                    # total_effort (will be computed each round)
-        min_total_efforts,      # pre-computed constant
-        max_total_efforts,      # pre-computed constant
-        min_other_bounds,       # pre-computed per-agent bounds
-        max_other_bounds        # pre-computed per-agent bounds
+        other_efforts_buffer,
+        total_efforts_buffer,
+        min_total_efforts,
+        max_total_efforts,
+        min_other_efforts,
+        max_other_efforts,
+        current_round
     )
     
     return TullockContest(agents, efforts, winners, utilities, nash_gaps, workspace)

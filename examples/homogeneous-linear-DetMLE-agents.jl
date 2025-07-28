@@ -10,12 +10,12 @@ function generate_det_MLE_agent_contest(n::Int, T::Int; χ)
 end
 
 # Set parameters
-n = 5  # number of agents
-T = 100
+n = 10  # number of agents
+T = 10000
 χ = 0.05
 contest = generate_det_MLE_agent_contest(n, T; χ = χ)
-run!(contest)
+@time run!(contest)
 
-final_efforts(contest)
+# final_efforts(contest)
 
 visualise(contest, ylims=(0,0.3))

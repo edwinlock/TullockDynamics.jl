@@ -150,15 +150,15 @@
         
         # Test that density integrates reasonably (not exactly 1 due to discretization)
         # Sample a few points and check they sum to something reasonable
-        y_vals = range(contest.workspace.min_other_bounds[agent_idx], 
-                      contest.workspace.max_other_bounds[agent_idx], 
+        y_vals = range(contest.workspace.min_other_efforts[agent_idx], 
+                      contest.workspace.max_other_efforts[agent_idx], 
                       length=10)
         densities = [estimator_func(y) for y in y_vals]
         @test all(densities .>= 0.0)
         
         # Test that density is zero outside bounds
-        lb = contest.workspace.min_other_bounds[agent_idx]
-        ub = contest.workspace.max_other_bounds[agent_idx]
+        lb = contest.workspace.min_other_efforts[agent_idx]
+        ub = contest.workspace.max_other_efforts[agent_idx]
         
         if isfinite(lb) && isfinite(ub)
             @test estimator_func(lb - 0.1) ≈ 0.0
