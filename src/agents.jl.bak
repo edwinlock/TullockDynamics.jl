@@ -126,7 +126,7 @@ end
 # Pre-defined constant functions for better type stability
 const ALWAYS_PLAY = (t::Int) -> 1.0::Float64
 const FULL_STEP = (t::Int) -> 1.0::Float64
-const FULL_HISTORY = (t::Int) -> 1:t-1
+const FULL_HISTORY = (t::Int) -> max(1, t-1):t-1
 
 # Comprehensive caching system for agent decision-making
 const ESTIMATOR_CACHE = Dict{Tuple, Any}()
@@ -202,7 +202,9 @@ custom_agent = MLEAgent(x -> x^1.5, χ=0.05)
 """
 function MLEAgent(cost; χ=0.01)
     estimator = max_likelihood_estimator
-    return Agent(estimator, cost, ALWAYS_PLAY, FULL_STEP, χ, FULL_HISTORY)
+    # Use typed constant functions for better performance
+    h(t) = 1:t-1  # access to entire history
+    return Agent(estimator, cost, p, α, χ, h)
 end
 
 
@@ -245,7 +247,9 @@ det_agent = DetMLEAgent(cost, χ=0.015)
 """
 function DetMLEAgent(cost; χ=0.01)
     estimator = deterministic_max_likelihood_estimator
-    return Agent(estimator, cost, ALWAYS_PLAY, FULL_STEP, χ, FULL_HISTORY)
+    # Use typed constant functions for better performance
+    h(t) = 1:t-1  # access to entire history
+    return Agent(estimator, cost, p, α, χ, h)
 end
 
 
@@ -292,7 +296,9 @@ robust_agent = DumbAgent(x -> 0.5*x^2, χ=0.02)
 """
 function DumbAgent(cost; χ=0.01)
     estimator = dumb_estimator
-    return Agent(estimator, cost, ALWAYS_PLAY, FULL_STEP, χ, FULL_HISTORY)
+    # Use typed constant functions for better performance
+    h(t) = 1:t-1  # access to entire history
+    return Agent(estimator, cost, p, α, χ, h)
 end
 
 
@@ -338,8 +344,10 @@ conservative_agent = StandardAgent(x -> x, α=0.3, χ=0.02)
 """
 function StandardAgent(cost; α=1, χ=0.01)
     estimator = classic_estimator
-    α_fn(t::Int)::Float64 = α  # step size function with proper typing
-    return Agent(estimator, cost, ALWAYS_PLAY, α_fn, χ, FULL_HISTORY)
+    # Use typed constant functions for better performance
+    α_fn(t) = α  # step size function
+    h(t) = 1:t-1  # access to entire history
+    return Agent(estimator, cost, p, α_fn, χ, h)
 end
 
 
@@ -395,5 +403,7 @@ precise_agent = BayesianAgent(x -> 0.5*x^1.5, χ=0.005)
 """
 function BayesianAgent(cost; χ=0.01)
     estimator = bayesian_estimator
-    return Agent(estimator, cost, ALWAYS_PLAY, FULL_STEP, χ, FULL_HISTORY)
+    # Use typed constant functions for better performance
+    h(t) = 1:t-1  # access to entire history
+    return Agent(estimator, cost, p, α, χ, h)
 end

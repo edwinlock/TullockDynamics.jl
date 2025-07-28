@@ -15,7 +15,7 @@ Cached wrapper for agent estimator calls to improve performance.
 function cached_estimator(agent::Agent, contest::TullockContest, agent_idx::Int, mem_window)
     # Create cache key based on agent, contest state, and memory window
     effort_data = contest.efforts[agent_idx, mem_window]
-    winner_data = contest.winners[agent_idx, mem_window] 
+    winner_data = contest.winners[agent_idx, mem_window]
     cache_key = (
         hash(agent.estimator),  # Estimator function identity
         agent_idx,
