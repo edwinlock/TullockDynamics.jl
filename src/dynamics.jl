@@ -10,52 +10,27 @@ import Random
 using StatsBase
 
 """
-Cached wrapper for agent estimator calls to improve performance.
+Cached wrapper for best_response calls with round-based invalidation.
+Main benefit: when no agents update in a round, we can reuse computations.
 """
-function cached_estimator(agent::Agent, contest::TullockContest, agent_idx::Int, mem_window)
-    # Create cache key based on agent, contest state, and memory window
-    effort_data = contest.efforts[agent_idx, mem_window]
-    winner_data = contest.winners[agent_idx, mem_window]
-    cache_key = (
-        hash(agent.estimator),  # Estimator function identity
-        agent_idx,
-        hash(effort_data),      # Agent's effort history
-        hash(winner_data),      # Agent's win history
-        hash(mem_window)        # Memory window
-    )
-    
-    # Check cache first
-    cached_result = get(ESTIMATOR_CACHE, cache_key, nothing)
-    if cached_result !== nothing
-        return cached_result
-    end
-    
-    # Compute estimate and cache it
-    result = agent.estimator(contest, agent_idx, mem_window)
-    ESTIMATOR_CACHE[cache_key] = result
-    return result
-end
-
-"""
-Cached wrapper for best_response calls to improve performance.
-"""
-function cached_best_response(agent::Agent, estim; min_other_efforts, max_other_efforts, _ignore...)
-    # Create cache key based on agent characteristics and estimate
+function cached_best_response(agent::Agent, estim, round::Int; min_other_efforts, max_other_efforts, _ignore...)
+    # Create stable cache key based on agent and estimate
     if estim isa Function
-        # For Bayesian agents with PDF estimators, sample the function to create a hash
-        sample_points = [min_other_efforts + i*(max_other_efforts - min_other_efforts)/5 for i in 0:5]
-        estim_hash = hash([estim(x) for x in sample_points])
+        # For PDF estimates, use a generation number instead of sampling
+        # This requires tracking when PDFs change (implemented in estimators)
+        estim_key = (hash(agent.estimator), round)  # Round acts as generation
     else
-        # For scalar estimates (most agents)
-        estim_hash = hash(estim)
+        # For scalar estimates, use the value directly
+        estim_key = estim
     end
     
     cache_key = (
         hash(agent.cost),       # Cost function identity
         agent.χ,                # Minimum effort bound
-        estim_hash,             # Estimate hash
+        estim_key,              # Estimate identifier
         min_other_efforts,      # Bounds
-        max_other_efforts
+        max_other_efforts,
+        round                   # Round for invalidation
     )
     
     # Check cache first
@@ -75,6 +50,7 @@ end
 """Set efforts of all agents in round `t` of TC `contest`."""
 function set_efforts!(contest::TullockContest, t::Int)
     @assert t ≥ 2 "In order to update efforts, the round must be t ≥ 2."
+
     # Run through all agents and set their efforts in round t
     Threads.@threads for i ∈ eachindex(contest.agents)
         agent = contest.agents[i]
@@ -85,13 +61,14 @@ function set_efforts!(contest::TullockContest, t::Int)
         else 
             # Get memory window for estimator
             mem_window = agent.h(t)  # get memory window as list or range
-            # Determine estimate of total effort of others (cached)
-            estim = cached_estimator(agent, contest, i, mem_window)
-            # Agent makes their move (cached)
-            br = cached_best_response(agent, estim;
+            # Determine estimate of total effort of others (no caching - ineffective)
+            estim = agent.estimator(contest, i, mem_window)
+            # Agent makes their move (cached with round-based invalidation)
+            br = cached_best_response(agent, estim, t;
                 min_other_efforts=contest.workspace.min_other_bounds[i],
                 max_other_efforts=contest.workspace.max_other_bounds[i],
             )
+            # Compute and store new effort
             prev_effort = contest.efforts[i, t-1]
             x = agent.α(t) * br + (1-agent.α(t)) * prev_effort
             contest.efforts[i,t] = x
@@ -102,25 +79,51 @@ end
 
 
 """
+Update workspace in round t. Assumes that efforts have already been set.
+
+This function updates four variables:
+    own_efforts
+    other_efforts
+    total_effort
+    weights_obj
+"""
+
+function update_workspace!(contest::TullockContest, t::Int)
+    ws = contest.workspace
+
+    # Compute total_effort and own_efforts
+    ws.total_effort = 0.0  # reset variable
+    for i ∈ eachindex(contest.agents)
+        own_effort = contest.efforts[i,t]
+        ws.own_efforts[i] = own_effort
+        ws.total_effort += own_effort
+    end
+
+    # Compute other_efforts
+    for i ∈ eachindex(contest.agents)
+        ws.other_efforts[i] = ws.total_effort - ws.own_efforts[i]
+    end
+
+    # Update weights
+    ws.weights_obj.values .= ws.own_efforts
+
+    return nothing
+end
+
+"""
 Compute utilities of all agents in round `t` of TC `contest'.
 
-Assumes that efforts have already been computed.
+Assumes that efforts have already been computed and the workspace has been updated.
 """
 function set_utilities!(contest::TullockContest, t::Int)
-    workspace = contest.workspace
-    # Direct computation without intermediate allocation
-    workspace.total_effort = 0.0
-    for i in eachindex(workspace.all_efforts)
-        workspace.all_efforts[i] = contest.efforts[i, t]
-        workspace.total_effort += workspace.all_efforts[i]
-    end
-    
-    Threads.@threads for i ∈ eachindex(contest.agents)
+    ws = contest.workspace
+
+    # Compute and store utility for each agent in round t
+    for i ∈ eachindex(contest.agents)
         agent = contest.agents[i]
-        x = workspace.all_efforts[i]
-        s = workspace.total_effort - x
-        contest.utilities[i,t] = utility(agent, x, s)
+        contest.utilities[i,t] = utility(agent, ws.own_efforts[i], ws.other_efforts[i])
     end
+
     return nothing
 end
 
@@ -128,26 +131,16 @@ end
 """
 Compute Nash gap of all agents in round `t` of TC `contest'.
 
-Assumes that efforts have already been computed.
+Assumes that efforts have already been computed and workspace is updated.
 """
 function set_nash_gap!(contest::TullockContest, t::Int)
-    workspace = contest.workspace
-    # Reuse the data already computed in set_utilities! if it's the same round
-    # Otherwise recompute (this is a minor optimization for the common case)
-    if workspace.total_effort == 0.0  # Not computed yet this round
-        workspace.total_effort = 0.0
-        for i in eachindex(workspace.all_efforts)
-            workspace.all_efforts[i] = contest.efforts[i, t]
-            workspace.total_effort += workspace.all_efforts[i]
-        end
+    ws = contest.workspace
+
+    for i ∈ eachindex(contest.agents)
+        agent = contest.agents[i]
+        contest.nash_gaps[i,t] = nash_gap(agent, ws.own_efforts[i], ws.other_efforts[i])
     end
     
-    Threads.@threads for i ∈ eachindex(contest.agents)
-        agent = contest.agents[i]
-        x = workspace.all_efforts[i]
-        s = workspace.total_effort - x
-        contest.nash_gaps[i,t] = nash_gap(agent, x, s)
-    end
     return nothing
 end
 
@@ -157,18 +150,24 @@ Run round `t` of TC `contest`. This involves getting agents to update their
 efforts, and then determining a winner.
 """
 function step!(contest::TullockContest, t::Int)
+    workspace = contest.workspace
+
     # Let all agents set their efforts if t ≥ 2
     t ≥ 2 && set_efforts!(contest, t)
+
+    # Update the workspace now that efforts have been set
+    update_workspace!(contest, t)
+
     # Compute the utilities of all the agents
-    set_utilities!(contest, t::Int)
+    set_utilities!(contest, t)
+    
     # Compute the Nash gap of each agent
-    set_nash_gap!(contest, t::Int)
-    # Determine a winner using reusable Weights object
-    workspace = contest.workspace
-    # Update the Weights object in-place (all_efforts buffer already populated)
-    workspace.weights_obj.values .= workspace.all_efforts
+    set_nash_gap!(contest, t)
+    
+    # Determine and record the winner
     winner = sample(workspace.weights_obj)
     contest.winners[winner, t] = true
+
     return nothing
 end
 
@@ -181,12 +180,12 @@ Returns:
 - If converged early: the round number where convergence occurred (1 ≤ result ≤ T)
 - If failed to converge: T+1 (to signal non-convergence)
 
-⚠️  WARNING: The returned value may exceed the allocated matrix size if convergence failed.
-When accessing contest data, always use min(returned_round, num_rounds(contest)) or 
-use the final_efforts() function which safely accesses the last column.
-
 Note: the Nash gap is not monotonically decreasing, but the dynamics terminates when
 the gap drops below ε for the first time.
+
+WARNING: The returned value may exceed the allocated matrix size if convergence failed.
+When accessing contest data, always use min(returned_round, num_rounds(contest)) or 
+use the final_efforts() function which safely accesses the last column.
 """
 function run!(contest::TullockContest; ε=-1.0, showprogress=false)
     T = num_rounds(contest)
@@ -202,10 +201,7 @@ function run!(contest::TullockContest; ε=-1.0, showprogress=false)
             break
         end
         t += 1
-        # ProgressMeter.next!(prog)
-        # update!(p, gap)
+        update!(prog, gap)
     end
-    # Return the round number, or T+1 if failed to converge (for backward compatibility)
-    # But accessing contest data should only use valid indices 1:T
-    return converged ? t : T + 1
+    return t
 end

@@ -91,7 +91,7 @@ include("utils.jl")
 # Exports from agents.jl
 export Agent, MLEAgent, DetMLEAgent, DumbAgent, BayesianAgent, StandardAgent
 export utility, best_response, nash_gap, max_agent_effort
-export clear_agent_caches!, clear_estimator_cache!, clear_best_response_cache!
+export clear_best_response_cache!, clear_agent_caches!
 # Exports from contests.jl
 export TullockContest
 export nash_gap, num_rounds

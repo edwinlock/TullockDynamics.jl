@@ -60,9 +60,9 @@
         @test contest_large.efforts[:, 1] == large_efforts
         
         # Very small initial efforts
-        small_efforts = [1e-10, 2e-10]
-        contest_small = TullockContest(agents, small_efforts, 3)
-        @test contest_small.efforts[:, 1] == small_efforts
+        smown_efforts = [1e-10, 2e-10]
+        contest_small = TullockContest(agents, smown_efforts, 3)
+        @test contest_small.efforts[:, 1] == smown_efforts
         
         # Zero initial efforts
         zero_efforts = [0.0, 0.0]

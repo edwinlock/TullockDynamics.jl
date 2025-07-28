@@ -83,8 +83,8 @@ using StatsBase
                 
                 # Manual winner selection based on effort weights
                 workspace = contest.workspace
-                workspace.all_efforts .= contest.efforts[:, t]
-                workspace.weights_obj.values .= workspace.all_efforts
+                workspace.own_efforts .= contest.efforts[:, t]
+                workspace.weights_obj.values .= workspace.own_efforts
                 winner = StatsBase.sample(workspace.weights_obj)
                 contest.winners[winner, t] = true
             end

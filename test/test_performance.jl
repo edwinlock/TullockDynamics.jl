@@ -65,7 +65,7 @@
             @test actual_final >= 1
             
             # Check workspace is reused properly
-            @test length(contest.workspace.all_efforts) == 2
+            @test length(contest.workspace.own_efforts) == 2
             @test contest.workspace.weights_obj isa StatsBase.Weights
         end
         
@@ -145,7 +145,7 @@
         end
         
         # Check workspace scales correctly
-        @test length(contest_large.workspace.all_efforts) == n_agents
+        @test length(contest_large.workspace.own_efforts) == n_agents
         @test length(contest_large.workspace.min_other_bounds) == n_agents
         @test length(contest_large.workspace.max_other_bounds) == n_agents
     end
@@ -182,7 +182,7 @@
         
         # Get references to workspace objects
         workspace_ref = contest.workspace
-        all_efforts_ref = contest.workspace.all_efforts
+        own_efforts_ref = contest.workspace.own_efforts
         weights_ref = contest.workspace.weights_obj
         
         # Run simulation
@@ -190,12 +190,12 @@
         
         # Verify same objects are still referenced (no reallocation)
         @test contest.workspace === workspace_ref
-        @test contest.workspace.all_efforts === all_efforts_ref
+        @test contest.workspace.own_efforts === own_efforts_ref
         @test contest.workspace.weights_obj === weights_ref
         
         # Verify workspace data is updated
         @test contest.workspace.total_effort >= 0.0
-        @test sum(contest.workspace.all_efforts) ≈ contest.workspace.total_effort
+        @test sum(contest.workspace.own_efforts) ≈ contest.workspace.total_effort
     end
     
     @testset "Convergence efficiency" begin

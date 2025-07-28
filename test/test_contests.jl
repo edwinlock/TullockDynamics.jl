@@ -26,7 +26,7 @@
         
         # Test workspace is properly initialized
         @test contest.workspace isa TullockDynamics.ContestWorkspace
-        @test length(contest.workspace.all_efforts) == 3
+        @test length(contest.workspace.own_efforts) == 3
         @test contest.workspace.weights_obj isa StatsBase.Weights
         @test contest.workspace.min_total_efforts > 0.0
         @test contest.workspace.max_total_efforts >= contest.workspace.min_total_efforts
