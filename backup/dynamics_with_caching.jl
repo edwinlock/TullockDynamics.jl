@@ -14,6 +14,9 @@ Cached wrapper for best_response calls with round-based invalidation.
 Main benefit: when no agents update in a round, we can reuse computations.
 """
 function cached_best_response(agent::Agent, estim, round::Int; min_other_efforts, max_other_efforts, _ignore...)
+    # Update statistics
+    CACHE_STATS.total_calls += 1
+    
     # Create stable cache key based on agent and estimate
     if estim isa Function
         # For PDF estimates, use a generation number instead of sampling
@@ -36,16 +39,19 @@ function cached_best_response(agent::Agent, estim, round::Int; min_other_efforts
     # Check cache first
     cached_result = get(BEST_RESPONSE_CACHE, cache_key, nothing)
     if cached_result !== nothing
+        CACHE_STATS.hits += 1
         return cached_result
     end
     
-    # Compute best response and cache it
+    # Cache miss - compute best response and cache it
+    CACHE_STATS.misses += 1
     result = best_response(agent, estim; 
                          min_other_efforts=min_other_efforts, 
                          max_other_efforts=max_other_efforts)
     BEST_RESPONSE_CACHE[cache_key] = result
     return result
 end
+
 
 """Set efforts of all agents in round `t` of TC `contest`."""
 function set_efforts!(contest::TullockContest, t::Int)
@@ -81,11 +87,12 @@ end
 """
 Update workspace in round t. Assumes that efforts have already been set.
 
-This function updates four variables:
+This function updates five variables:
     own_efforts
     other_efforts
     total_effort
     weights_obj
+    current_round
 """
 
 function update_workspace!(contest::TullockContest, t::Int)
@@ -106,6 +113,9 @@ function update_workspace!(contest::TullockContest, t::Int)
 
     # Update weights
     ws.weights_obj.values .= ws.own_efforts
+    
+    # Mark workspace as updated for this round
+    ws.current_round = t
 
     return nothing
 end
@@ -113,10 +123,15 @@ end
 """
 Compute utilities of all agents in round `t` of TC `contest'.
 
-Assumes that efforts have already been computed and the workspace has been updated.
+If workspace is not updated for this round, this function will update it first.
 """
 function set_utilities!(contest::TullockContest, t::Int)
     ws = contest.workspace
+    
+    # Check if workspace needs updating for this round
+    if ws.current_round != t
+        update_workspace!(contest, t)
+    end
 
     # Compute and store utility for each agent in round t
     for i ∈ eachindex(contest.agents)
@@ -131,10 +146,15 @@ end
 """
 Compute Nash gap of all agents in round `t` of TC `contest'.
 
-Assumes that efforts have already been computed and workspace is updated.
+If workspace is not updated for this round, this function will update it first.
 """
 function set_nash_gap!(contest::TullockContest, t::Int)
     ws = contest.workspace
+    
+    # Check if workspace needs updating for this round
+    if ws.current_round != t
+        update_workspace!(contest, t)
+    end
 
     for i ∈ eachindex(contest.agents)
         agent = contest.agents[i]
@@ -190,16 +210,11 @@ use the final_efforts() function which safely accesses the last column.
 function run!(contest::TullockContest; ε=-1.0, showprogress=false)
     T = num_rounds(contest)
     t = 1
-    converged = false
-    # prog = Progress(T, enabled=showprogress)
     prog = ProgressThresh(ε; desc="Minimizing:", enabled=showprogress)
     while t ≤ T
         step!(contest, t)
         gap = nash_gap(contest, t)
-        if gap ≤ ε
-            converged = true
-            break
-        end
+        gap ≤ ε && break
         t += 1
         update!(prog, gap)
     end

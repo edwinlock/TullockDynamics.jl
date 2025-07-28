@@ -101,7 +101,6 @@ The comprehensive caching implementation in the `improved-caching` branch provid
 - **Collision Handling**: Hash-based keys with low collision probability
 
 ### Cache Storage
-- **Thread-Safe**: Dictionary-based storage compatible with parallel execution
 - **Memory Efficient**: Keys designed to minimize storage overhead
 - **Type Stable**: Proper typing for optimal Julia performance
 

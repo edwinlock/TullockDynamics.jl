@@ -97,7 +97,6 @@ function best_response(agent::Agent, pdf::Function;
     )
     χ = agent.χ
     domain = [min_other_efforts, max_other_efforts]
-    println("Domain is $(domain)")
     
     # Define the expected utility function
     function φ(z)
@@ -132,13 +131,46 @@ const FULL_HISTORY = (t::Int) -> 1:t-1
 # Best response caching system (estimator caching removed as ineffective)
 const BEST_RESPONSE_CACHE = Dict{Tuple, Float64}()
 
+# Cache statistics tracking
+mutable struct CacheStats
+    hits::Int
+    misses::Int
+    total_calls::Int
+end
+
+const CACHE_STATS = CacheStats(0, 0, 0)
+
 """
 Clear the best response cache used for optimal effort calculations.
 Main benefit: reuse computations when no agents update in a round.
 """
 function clear_best_response_cache!()
     empty!(BEST_RESPONSE_CACHE)
+    # Reset statistics
+    CACHE_STATS.hits = 0
+    CACHE_STATS.misses = 0
+    CACHE_STATS.total_calls = 0
     return nothing
+end
+
+"""
+Get cache statistics showing hit rate and effectiveness.
+
+Returns:
+- hits: Number of cache hits
+- misses: Number of cache misses  
+- hit_rate: Percentage of calls that were cache hits
+- total_calls: Total number of cache lookups
+"""
+function get_cache_stats()
+    total = CACHE_STATS.total_calls
+    hit_rate = total > 0 ? CACHE_STATS.hits / total * 100 : 0.0
+    return (
+        hits = CACHE_STATS.hits,
+        misses = CACHE_STATS.misses,
+        hit_rate = hit_rate,
+        total_calls = total
+    )
 end
 
 # Deprecated aliases for backwards compatibility

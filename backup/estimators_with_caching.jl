@@ -261,8 +261,11 @@ function bayesian_estimator(
     
     # Create cache key based on the parameters that affect the integration
     # Use view to avoid copying the effort data when computing hash
-    effort_values = @view contest.efforts[agent_idx, window]
-    cache_key = (agent_idx, l, lb, ub, hash(effort_values))
+    effort_view = @view contest.efforts[agent_idx, window]
+    cache_key = (agent_idx, l, lb, ub, hash(effort_view))
+    
+    # Still need the effort values for the actual computation
+    effort_values = effort_view  # This will be a view, not a copy
     
     # Check if normalization constant is already cached
     M = get(BAYESIAN_INTEGRATION_CACHE, cache_key, nothing)
