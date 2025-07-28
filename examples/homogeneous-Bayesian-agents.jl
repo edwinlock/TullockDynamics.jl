@@ -1,8 +1,8 @@
 using Revise
 using TullockDynamics
 
-# cost(x) = x
-cost(x) = 0.8x^1.001
+cost(x) = x
+# cost(x) = 0.8x^1.001
 
 function generate_Bayesian_agent_contest(n::Int, T::Int; χ)
     agents = [BayesianAgent(cost; χ=χ) for _ in 1:n]
@@ -11,11 +11,11 @@ function generate_Bayesian_agent_contest(n::Int, T::Int; χ)
 end
 
 # Set parameters
-n = 3  # number of agents
-T = 100
+n = 100  # number of agents
+T = 1000
 χ = 0.05
-contest = generate_Bayesian_agent_contest(n, T; χ = χ)
-run!(contest)
+contest = generate_Bayesian_agent_contest(n, T; χ = χ);
+@profview run!(contest)
 
 final_efforts(contest)
 visualise(contest, ylims=(0,0.3))

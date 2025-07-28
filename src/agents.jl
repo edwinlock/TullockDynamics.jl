@@ -121,6 +121,11 @@ end
 
 
 
+# Pre-defined constant functions for better type stability
+const ALWAYS_PLAY = (t) -> 1.0
+const FULL_STEP = (t) -> 1.0
+const FULL_HISTORY = (t) -> 1:t-1
+
 ### Constructors for specific kinds of agents
 
 
@@ -180,11 +185,11 @@ The agent plays in every round, has access to her entire history
 and has step size `α` (defaults to 1).
 """
 function StandardAgent(cost; α=1, χ=0.01)
-    estimator = omniscient_estimator
+    estimator = classic_estimator
     p(t) = 1  # plays in every round
-    step(t) = 1  # commits fully to best response (no interpolation)
+    α_fn(t) = α  # step size function
     h(t) = 1:t-1  # access to entire history
-    return Agent(estimator, cost, p, step, χ, h)
+    return Agent(estimator, cost, p, α_fn, χ, h)
 end
 
 
