@@ -11,39 +11,13 @@ function generate_Bayesian_agent_contest(n::Int, T::Int; χ)
 end
 
 # Set parameters
-n = 10  # number of agents
+n = 8  # number of agents
 T = 1000
 χ = 0.05
 contest = generate_Bayesian_agent_contest(n, T; χ = χ);
 
-@time run!(contest)
+@profview_allocs run!(contest)
 
-final_efforts(contest)
-visualise(contest, ylims=(0,0.3))
+# final_efforts(contest)
 
-# # Debugging code
-# # We want to look at the estimator PDFs of agent i in time step t
-# using Plots
-# min_total_efforts = sum(agent.χ for agent in contest.agents)
-# max_total_efforts = sum(agent.max_effort for agent in contest.agents)
-
-# function plot_estimator(i, t, contest)
-#     agent = contest.agents[i]
-#     mem_window = 1:t
-#     own_efforts, total_efforts, wins = retrieve_estimator_data(i, mem_window, contest)
-#     est = agent.estimator(
-#         own_efforts=own_efforts,
-#         total_efforts=total_efforts,
-#         wins=wins,
-#         min_other_efforts=min_total_efforts - agent.χ,
-#         max_other_efforts=max_total_efforts - agent.max_effort,
-#     )
-#     display(plot!(est, 0, max_total_efforts+1))
-# end
-
-# plot()
-# plot_estimator(1, 1, contest)
-# plot_estimator(1, 2, contest)
-# plot_estimator(1, 3, contest)
-# plot_estimator(1, 4, contest)
-# plot_estimator(1, 5, contest)
+# visualise(contest, ylims=(0,0.3))

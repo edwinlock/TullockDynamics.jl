@@ -77,7 +77,7 @@ Optimized for the usage patterns in TullockDynamics.jl, typically achieving:
 - [`max_likelihood_estimator`](@ref): Uses find_root for parameter estimation
 - [`deterministic_max_likelihood_estimator`](@ref): Another find_root application
 """
-function find_root(f::Function, l::Float64)::Float64
+function find_root(f::F, l::Float64)::Float64 where F
     @assert f(l) ≥ 0 "Function must satisfy f(l) ≥ 0."
     
     # Phase 1: Improved bracketing with exponential growth capping
@@ -103,7 +103,7 @@ function find_root(f::Function, l::Float64)::Float64
         end
         
         mid = (upper + lower) / 2
-        f_mid = f(mid)
+        f_mid = f(mid)::Float64
         
         # Termination condition 2: Function value is essentially zero (high accuracy)
         if abs(f_mid) <= FUNCTION_TOL

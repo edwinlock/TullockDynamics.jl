@@ -13,7 +13,7 @@ n = 10 # number of agents
 T = 5000
 χ = 0.05
 contest = generate_MLE_agent_contest(n, T; χ = χ)
-@profview_allocs run!(contest)
+@time run!(contest)
 
 # final_efforts(contest)
 

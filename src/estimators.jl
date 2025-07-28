@@ -29,10 +29,7 @@ function max_likelihood_estimator(
     )::Float64
 
     # Compute number of wins
-    w = 0
-    for t ∈ window
-        w += contest.winners[agent_idx, t]
-    end
+    w = count(t -> contest.winners[agent_idx, t], window)
 
     # Edge case of zero wins: return highest x for which cost doesn't exceed payoff 1.
     w == 0 && return max_agent_effort(contest.agents[agent_idx].cost)
