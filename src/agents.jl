@@ -128,6 +128,35 @@ const ALWAYS_PLAY = (t) -> 1.0
 const FULL_STEP = (t) -> 1.0
 const FULL_HISTORY = (t) -> 1:t-1
 
+# Comprehensive caching system for agent decision-making
+const ESTIMATOR_CACHE = Dict{Tuple, Any}()
+const BEST_RESPONSE_CACHE = Dict{Tuple, Float64}()
+
+"""
+Clear all caches used in agent decision-making (estimators and best responses).
+"""
+function clear_agent_caches!()
+    empty!(ESTIMATOR_CACHE)
+    empty!(BEST_RESPONSE_CACHE)
+    return nothing
+end
+
+"""
+Clear the estimator cache used for agent estimations.
+"""
+function clear_estimator_cache!()
+    empty!(ESTIMATOR_CACHE)
+    return nothing
+end
+
+"""
+Clear the best response cache used for optimal effort calculations.
+"""
+function clear_best_response_cache!()
+    empty!(BEST_RESPONSE_CACHE)
+    return nothing
+end
+
 
 ### Constructors for specific kinds of agents
 

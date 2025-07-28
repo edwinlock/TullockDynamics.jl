@@ -107,17 +107,14 @@ const FULL_STEP = (t) -> 1.0
 | Component | Current Performance | Memory Allocation | Potential Improvement |
 |-----------|-------------------|-------------------|---------------------|
 | Best Response (ForwardDiff) | ~5.5MB/call | 5.5MB | 2-3x faster |
-| Bayesian Integration | 10-100x slow | Variable | 5-10x faster |
 | Type Specialization | Minor overhead | Minimal | 10-20% faster |
 
 ---
 
 ## Recommended Implementation Priority
 
-### Phase 1: Critical Fixes (Expected 2-5x overall improvement)
+### Phase 1: Critical Fixes (Expected 2-3x overall improvement)
 1. **Replace ForwardDiff with analytical derivatives** for simple utility functions
-2. **Implement integration caching** for Bayesian agents
-3. **Optimize Bayesian numerical integration** with specialized algorithms
 
 ### Phase 2: Code Quality (Expected 10-20% additional improvement)
 1. **Fix type instability** in agent constructors
@@ -135,4 +132,4 @@ const FULL_STEP = (t) -> 1.0
 
 ---
 
-*Status: Major workspace and root-finding optimizations completed. Focus now on algorithmic improvements for derivative computation and numerical integration.*
+*Status: Major optimizations completed including workspace management, root-finding enhancements, and Bayesian integration caching. Primary remaining bottleneck is ForwardDiff computational overhead in derivative computation.*

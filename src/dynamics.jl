@@ -9,6 +9,69 @@ Implementation of the following Tullock dynamics:
 import Random
 using StatsBase
 
+"""
+Cached wrapper for agent estimator calls to improve performance.
+"""
+function cached_estimator(agent::Agent, contest::TullockContest, agent_idx::Int, mem_window)
+    # Create cache key based on agent, contest state, and memory window
+    effort_data = contest.efforts[agent_idx, mem_window]
+    winner_data = contest.winners[agent_idx, mem_window] 
+    cache_key = (
+        hash(agent.estimator),  # Estimator function identity
+        agent_idx,
+        hash(effort_data),      # Agent's effort history
+        hash(winner_data),      # Agent's win history
+        hash(mem_window)        # Memory window
+    )
+    
+    # Check cache first
+    cached_result = get(ESTIMATOR_CACHE, cache_key, nothing)
+    if cached_result !== nothing
+        return cached_result
+    end
+    
+    # Compute estimate and cache it
+    result = agent.estimator(contest, agent_idx, mem_window)
+    ESTIMATOR_CACHE[cache_key] = result
+    return result
+end
+
+"""
+Cached wrapper for best_response calls to improve performance.
+"""
+function cached_best_response(agent::Agent, estim; min_other_efforts, max_other_efforts, _ignore...)
+    # Create cache key based on agent characteristics and estimate
+    if estim isa Function
+        # For Bayesian agents with PDF estimators, sample the function to create a hash
+        sample_points = [min_other_efforts + i*(max_other_efforts - min_other_efforts)/5 for i in 0:5]
+        estim_hash = hash([estim(x) for x in sample_points])
+    else
+        # For scalar estimates (most agents)
+        estim_hash = hash(estim)
+    end
+    
+    cache_key = (
+        hash(agent.cost),       # Cost function identity
+        agent.χ,                # Minimum effort bound
+        estim_hash,             # Estimate hash
+        min_other_efforts,      # Bounds
+        max_other_efforts
+    )
+    
+    # Check cache first
+    cached_result = get(BEST_RESPONSE_CACHE, cache_key, nothing)
+    if cached_result !== nothing
+        return cached_result
+    end
+    
+    # Compute best response and cache it
+    result = best_response(agent, estim; 
+                         min_other_efforts=min_other_efforts, 
+                         max_other_efforts=max_other_efforts)
+    BEST_RESPONSE_CACHE[cache_key] = result
+    return result
+end
+
 """Set efforts of all agents in round `t` of TC `contest`."""
 function set_efforts!(contest::TullockContest, t::Int)
     @assert t ≥ 2 "In order to update efforts, the round must be t ≥ 2."
@@ -22,10 +85,10 @@ function set_efforts!(contest::TullockContest, t::Int)
         else 
             # Get memory window for estimator
             mem_window = agent.h(t)  # get memory window as list or range
-            # Determine estimate of total effort of others
-            estim = agent.estimator(contest, i, mem_window)
-            # Agent makes their move
-            br = best_response(agent, estim;
+            # Determine estimate of total effort of others (cached)
+            estim = cached_estimator(agent, contest, i, mem_window)
+            # Agent makes their move (cached)
+            br = cached_best_response(agent, estim;
                 min_other_efforts=contest.workspace.min_other_bounds[i],
                 max_other_efforts=contest.workspace.max_other_bounds[i],
             )
