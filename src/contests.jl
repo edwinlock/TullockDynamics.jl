@@ -32,7 +32,62 @@ end
 num_rounds(contest::TullockContest) = size(contest.efforts)[2]
 
 
-"""Create Tullock Contest with given `agents`, initial effort vector `x`, and `T` rounds."""
+"""
+    TullockContest(agents::Vector{Agent}, x::Vector{Float64}, T::Int) -> TullockContest
+
+Create a Tullock contest simulation with specified agents, initial efforts, and time horizon.
+
+A Tullock contest is a strategic game where agents compete by exerting costly effort, with the 
+probability of winning proportional to their relative effort. This constructor sets up the 
+contest data structure with optimized workspace for efficient simulation.
+
+# Arguments
+- `agents::Vector{Agent}`: Vector of competing agents (minimum 2 required)
+- `x::Vector{Float64}`: Initial effort levels for each agent (must match length of agents)
+- `T::Int`: Number of rounds to simulate (must be positive)
+
+# Returns
+- `TullockContest`: Initialized contest ready for simulation
+
+# Contest Structure
+The contest maintains several matrices tracking the dynamics:
+- **efforts**: Agent effort levels over time (agents × rounds)
+- **winners**: Boolean matrix indicating round winners (agents × rounds)  
+- **utilities**: Agent utilities over time (agents × rounds)
+- **nash_gaps**: Distance from Nash equilibrium (agents × rounds)
+- **workspace**: Optimized memory workspace for computations
+
+# Validation
+- Requires at least 2 agents (single-agent contests not meaningful)
+- Initial effort vector length must match number of agents
+- Number of rounds must be positive
+- All initial efforts should be non-negative
+
+# Performance Features
+- **Workspace optimization**: Pre-allocated buffers eliminate memory allocations
+- **Pre-computed constants**: Agent bounds calculated once for efficiency
+- **Optimized data structures**: Efficient matrix layouts for cache performance
+
+# Example
+```julia
+# Create agents with different cost functions
+cost1(x) = x^2
+cost2(x) = 0.5 * x^1.5
+agents = [MLEAgent(cost1), DetMLEAgent(cost2)]
+
+# Set up contest with initial efforts and 50 rounds
+initial_efforts = [0.1, 0.15]
+contest = TullockContest(agents, initial_efforts, 50)
+
+# Run simulation
+final_round = run!(contest)
+```
+
+# See Also
+- [`run!`](@ref): Execute the contest simulation
+- [`Agent`](@ref): Agent constructor for custom agents
+- [`visualise`](@ref): Plot contest dynamics
+"""
 function TullockContest(agents::Vector{Agent}, x::Vector{Float64}, T::Int)
     @assert length(agents) >= 2 "Contest must have at least 2 agents."
     @assert length(agents) == length(x) "Length of effort vector must match number of agents."

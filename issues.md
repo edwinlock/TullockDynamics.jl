@@ -40,23 +40,30 @@ end
 
 ---
 
-### 2. **Bayesian Integration Computational Overhead**
-**File:** `src/estimators.jl` (lines 206-207), `src/agents.jl` (lines 103-104)  
-**Impact:** ⚠️ **HIGH** - Expensive numerical integration without caching  
-**Performance Cost:** Bayesian agents 10-100x slower than other agent types
+### 2. **ForwardDiff Computational Overhead**
+**File:** `src/agents.jl` (lines 80, 107)  
+**Impact:** ⚠️ **CRITICAL** - 5.5MB allocation per best_response call  
+**Performance Cost:** Major contributor to overall simulation time
 
 **Root Cause:**
 ```julia
-prob = IntegralProblem(f, domain)
-M = solve(prob, QuadGKJL()).u  # Expensive integration every call
+# In best_response function
+d(z) = ForwardDiff.derivative(z -> utility(agent, z, s), z)
 ```
 
-**Recommended Solutions:**
-1. **Caching**: Memoize integration results based on input parameters
-2. **Analytical approximations**: Use closed-form solutions where possible
-3. **Adaptive quadrature**: Use problem-specific integration schemes
+ForwardDiff creates dual numbers and tape allocations for each derivative computation, causing significant overhead for simple functions.
 
-**Expected Improvement:** 5-10x speed improvement for Bayesian agents
+**Recommended Fix:**
+For simple utility functions, use analytical derivatives:
+```julia
+# For utility(agent, x, s) = x/(x+s) - cost(x)
+# Analytical derivative: d/dx = s/(x+s)² - cost'(x)
+function utility_derivative(agent::Agent, x::Float64, s::Float64)
+    return s / (x + s)^2 - ForwardDiff.derivative(agent.cost, x)
+end
+```
+
+**Expected Improvement:** 70% reduction in best_response allocations, 2-3x speed improvement
 
 ---
 

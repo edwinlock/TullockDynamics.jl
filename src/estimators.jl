@@ -1,3 +1,14 @@
+# Cache for expensive Bayesian integrations to improve performance
+const BAYESIAN_INTEGRATION_CACHE = Dict{Tuple, Float64}()
+
+"""
+Clear the Bayesian integration cache. Useful for testing or memory management.
+"""
+function clear_bayesian_cache!()
+    empty!(BAYESIAN_INTEGRATION_CACHE)
+    return nothing
+end
+
 """
     max_likelihood_estimator(contest::TullockContest, agent_idx::Int, window; _ignore...) -> Float64
 
@@ -234,8 +245,9 @@ where:
 - The product reflects the likelihood of the observed outcomes
 
 # Performance Notes
-Uses numerical integration (QuadGKJL) to normalize the distribution, which can be
-computationally expensive for frequent calls.
+Uses numerical integration (QuadGKJL) to normalize the distribution. Results are cached
+based on agent parameters and effort history to significantly improve performance on
+repeated calls with similar parameters. Cache can be cleared with `clear_bayesian_cache!()`.
 """
 function bayesian_estimator(
         contest::TullockContest,
@@ -246,15 +258,29 @@ function bayesian_estimator(
     # Count number of losses directly
     l = count(==(0), contest.winners[agent_idx, window])
     lb, ub = contest.workspace.min_other_bounds[agent_idx], contest.workspace.max_other_bounds[agent_idx]
-    # Hard-code the uniform distribution on domain (lb, ub)
+    
+    # Create cache key based on the parameters that affect the integration
+    effort_values = collect(contest.efforts[agent_idx, window])
+    cache_key = (agent_idx, l, lb, ub, hash(effort_values))
+    
+    # Check if normalization constant is already cached
+    M = get(BAYESIAN_INTEGRATION_CACHE, cache_key, nothing)
+    
+    # Define helper functions once
     initial_pdf(y) = lb ≤ y ≤ ub ? 1. / (ub - lb) : 0.
-    # Determine the unnormalised estimator f
-    f(y,p) = exp( l*log(y)  + log(initial_pdf(y)) - sum(log(x + y) for x ∈ contest.efforts[agent_idx, window]) )
-    # Compute the integral of f on domain [lb, ub] to normalise f
-    domain = (lb, ub)
-    prob = IntegralProblem(f, domain)
-    M = solve(prob, QuadGKJL()).u
-    # Define the normalised estimator μ
+    f(y,p) = exp( l*log(y)  + log(initial_pdf(y)) - sum(log(x + y) for x ∈ effort_values) )
+    
+    if M === nothing
+        # Compute the integral of f on domain [lb, ub] to normalise f
+        domain = (lb, ub)
+        prob = IntegralProblem(f, domain)
+        M = solve(prob, QuadGKJL()).u
+        
+        # Cache the result for future use
+        BAYESIAN_INTEGRATION_CACHE[cache_key] = M
+    end
+    
+    # Define the normalized estimator μ using cached normalization constant
     μ(y) = lb ≤ y ≤ ub ? f(y,0) / M : 0.
     return μ
 end

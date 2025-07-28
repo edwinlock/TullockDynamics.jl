@@ -96,13 +96,15 @@ function best_response(agent::Agent, pdf::Function;
         _ignore...
     )
     χ = agent.χ
-    # Define the function to optimise over:
     domain = [min_other_efforts, max_other_efforts]
+    
+    # Define the expected utility function
     function φ(z)
         f = (s, p) -> utility(agent, z, s) * pdf(s)
         prob = IntegralProblem(f, domain)
         return solve(prob, QuadGKJL()).u
     end
+    
     # Define derivative of φ
     d(z) = ForwardDiff.derivative(φ, z)
     # If d is negative on entire interval [χ, ∞), return lower boundary χ,
@@ -126,15 +128,48 @@ const ALWAYS_PLAY = (t) -> 1.0
 const FULL_STEP = (t) -> 1.0
 const FULL_HISTORY = (t) -> 1:t-1
 
+
 ### Constructors for specific kinds of agents
 
 
 """
-Create an MLE agent with `cost` function, and minimum effort
-bound `χ` (with default 0.01).
+    MLEAgent(cost; χ=0.01) -> Agent
 
-The agent plays in every round, has access to her entire history
-and has step size 1.
+Create a Maximum Likelihood Estimation agent for Tullock contest simulation.
+
+This agent uses maximum likelihood estimation to learn about opponents' total effort 
+based on win/loss history. It solves the equation ∑(xᵢ/(xᵢ + y)) = w for the 
+estimated opponent effort y, where xᵢ are the agent's efforts and w is the number of wins.
+
+# Arguments
+- `cost::Function`: The agent's cost function c(x) where x is effort level
+- `χ::Float64=0.01`: Minimum effort bound (must be positive)
+
+# Returns
+- `Agent`: Configured agent with MLE learning behavior
+
+# Behavior
+- **Participation**: Plays in every round (p(t) = 1)
+- **Learning**: Uses entire history for estimation (h(t) = 1:t-1)  
+- **Adaptation**: Full commitment to best response (α(t) = 1)
+- **Estimation**: Maximum likelihood based on win counts
+
+# Example
+```julia
+# Linear cost agent
+linear_agent = MLEAgent(x -> x, χ=0.02)
+
+# Quadratic cost agent  
+quad_agent = MLEAgent(x -> 0.5*x^2)
+
+# Custom cost with higher minimum effort
+custom_agent = MLEAgent(x -> x^1.5, χ=0.05)
+```
+
+# See Also
+- [`DetMLEAgent`](@ref): Deterministic MLE based on observed efforts
+- [`BayesianAgent`](@ref): Bayesian learning approach
+- [`max_likelihood_estimator`](@ref): The underlying estimation function
 """
 function MLEAgent(cost; χ=0.01)
     estimator = max_likelihood_estimator
@@ -146,11 +181,41 @@ end
 
 
 """
-Create a deterministic MLE agent with `cost` function, and minimum
-effort bound `χ` (defaults to 0.01).
+    DetMLEAgent(cost; χ=0.01) -> Agent
 
-The agent plays in every round, has access to her entire history
-and has step size 1.
+Create a Deterministic Maximum Likelihood Estimation agent for Tullock contest simulation.
+
+This agent uses deterministic MLE based on observed total efforts rather than just win/loss 
+outcomes. It computes expected wins as w = ∑(xᵢ/totalᵢ) and then solves ∑(xᵢ/(xᵢ + y)) = w 
+for the estimated opponent effort y.
+
+# Arguments
+- `cost::Function`: The agent's cost function c(x) where x is effort level
+- `χ::Float64=0.01`: Minimum effort bound (must be positive)
+
+# Returns
+- `Agent`: Configured agent with deterministic MLE learning behavior
+
+# Behavior
+- **Participation**: Plays in every round (p(t) = 1)
+- **Learning**: Uses entire history for estimation (h(t) = 1:t-1)
+- **Adaptation**: Full commitment to best response (α(t) = 1)
+- **Estimation**: Deterministic MLE based on observed total efforts
+
+# Differences from MLEAgent
+- Uses observed total efforts instead of just win counts
+- More information-efficient but requires observing all efforts
+- Often converges faster than standard MLE
+
+# Example
+```julia
+cost(x) = x^2
+det_agent = DetMLEAgent(cost, χ=0.015)
+```
+
+# See Also
+- [`MLEAgent`](@ref): Standard MLE based on win counts only
+- [`deterministic_max_likelihood_estimator`](@ref): The underlying estimation function
 """
 function DetMLEAgent(cost; χ=0.01)
     estimator = deterministic_max_likelihood_estimator
@@ -162,11 +227,45 @@ end
 
 
 """
-Create a dumb agent with `cost` function, and minimum
-effort bound `χ` (defaults to 0.01).
+    DumbAgent(cost; χ=0.01) -> Agent
 
-The agent plays in every round, has access to her entire history
-and has step size 1.
+Create a "dumb" agent that uses simple averaging for Tullock contest simulation.
+
+This agent uses naive estimation by simply averaging observed opponent efforts over 
+time, without sophisticated learning algorithms. Despite its simplicity, it often 
+performs surprisingly well in practice.
+
+# Arguments
+- `cost::Function`: The agent's cost function c(x) where x is effort level
+- `χ::Float64=0.01`: Minimum effort bound (must be positive)
+
+# Returns
+- `Agent`: Configured agent with simple averaging behavior
+
+# Behavior
+- **Participation**: Plays in every round (p(t) = 1)
+- **Learning**: Uses entire history for estimation (h(t) = 1:t-1)
+- **Adaptation**: Full commitment to best response (α(t) = 1)
+- **Estimation**: Simple average of observed opponent efforts
+
+# Characteristics
+- Computationally efficient (no complex optimization)
+- Robust to noise and outliers
+- Good baseline for comparison with sophisticated agents
+- Often surprisingly competitive in practice
+
+# Example
+```julia
+# Simple linear cost dumb agent
+dumb_agent = DumbAgent(x -> x)
+
+# Quadratic cost with higher minimum effort
+robust_agent = DumbAgent(x -> 0.5*x^2, χ=0.02)
+```
+
+# See Also
+- [`MLEAgent`](@ref): More sophisticated MLE learning
+- [`dumb_estimator`](@ref): The underlying estimation function
 """
 function DumbAgent(cost; χ=0.01)
     estimator = dumb_estimator
@@ -178,11 +277,44 @@ end
 
 
 """
-Create a classic agent with `cost` function, and minimum
-effort bound `χ` (defaults to 0.01).
+    StandardAgent(cost; α=1, χ=0.01) -> Agent
 
-The agent plays in every round, has access to her entire history
-and has step size `α` (defaults to 1).
+Create a "standard" agent that uses classic exponential smoothing estimation.
+
+This agent uses traditional exponential smoothing to estimate opponent efforts,
+providing a middle ground between simple averaging and sophisticated learning algorithms.
+
+# Arguments
+- `cost::Function`: The agent's cost function c(x) where x is effort level
+- `α::Float64=1`: Step size for learning (1 = full adaptation, 0 = no learning)
+- `χ::Float64=0.01`: Minimum effort bound (must be positive)
+
+# Returns
+- `Agent`: Configured agent with classic estimation behavior
+
+# Behavior
+- **Participation**: Plays in every round (p(t) = 1)
+- **Learning**: Uses entire history for estimation (h(t) = 1:t-1)
+- **Adaptation**: Configurable step size (α(t) = α)
+- **Estimation**: Exponential smoothing of observed efforts
+
+# Step Size Parameter
+- `α = 1`: Full commitment to best response (like other agents)
+- `α = 0.5`: Moderate adaptation, more robust to noise
+- `α = 0.1`: Conservative learning, slow but stable
+
+# Example
+```julia
+# Full adaptation agent
+standard_agent = StandardAgent(x -> x^2)
+
+# Conservative learning agent
+conservative_agent = StandardAgent(x -> x, α=0.3, χ=0.02)
+```
+
+# See Also
+- [`MLEAgent`](@ref): Maximum likelihood estimation approach
+- [`classic_estimator`](@ref): The underlying estimation function
 """
 function StandardAgent(cost; α=1, χ=0.01)
     estimator = classic_estimator
@@ -195,11 +327,53 @@ end
 
 
 """
-Create a Bayesian agent with `cost` function, and minimum effort
-bound `χ` (with default 0.01).
+    BayesianAgent(cost; χ=0.01) -> Agent
 
-The agent plays in every round, has access to her entire history
-and has step size 1.
+Create a Bayesian learning agent for Tullock contest simulation.
+
+This agent uses sophisticated Bayesian learning with numerical integration to maintain 
+probability distributions over opponent behavior. It provides theoretically optimal 
+learning but is computationally expensive.
+
+# Arguments
+- `cost::Function`: The agent's cost function c(x) where x is effort level
+- `χ::Float64=0.01`: Minimum effort bound (must be positive)
+
+# Returns
+- `Agent`: Configured agent with Bayesian learning behavior
+
+# Behavior
+- **Participation**: Plays in every round (p(t) = 1)
+- **Learning**: Uses entire history for estimation (h(t) = 1:t-1)
+- **Adaptation**: Full commitment to best response (α(t) = 1)
+- **Estimation**: Bayesian updating with numerical integration
+
+# Characteristics
+- Theoretically optimal learning approach
+- Maintains full probability distributions over beliefs
+- Computationally expensive (10-100x slower than other agents)
+- Most sophisticated learning algorithm available
+- Accounts for uncertainty in opponent behavior
+
+# Performance Notes
+- Significantly slower than other agent types
+- Requires numerical integration for each decision
+- Best suited for small contests or research applications
+- Consider other agents for large-scale simulations
+
+# Example
+```julia
+# Basic Bayesian agent
+bayesian_agent = BayesianAgent(x -> x^2)
+
+# High-precision Bayesian agent
+precise_agent = BayesianAgent(x -> 0.5*x^1.5, χ=0.005)
+```
+
+# See Also
+- [`MLEAgent`](@ref): Faster maximum likelihood approach
+- [`bayesian_estimator`](@ref): The underlying estimation function
+- [`best_response`](@ref): Optimization with probability distributions
 """
 function BayesianAgent(cost; χ=0.01)
     estimator = bayesian_estimator
