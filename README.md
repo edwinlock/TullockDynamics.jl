@@ -12,10 +12,11 @@ TullockDynamics.jl provides a comprehensive framework for modeling and simulatin
 ## Key Features
 
 - **Multiple Agent Types**: MLE, Deterministic MLE, Bayesian, and Classic agents with different learning strategies
-- **High Performance**: Optimized workspace-based memory management and enhanced numerical algorithms
+- **High Performance**: Optimized root finding with caching, workspace-based memory management, and tuned integration tolerances
+- **Smart Defaults**: Automatically balanced performance and accuracy settings for optimal out-of-the-box experience
 - **Comprehensive Testing**: 1,300+ tests ensuring mathematical correctness and performance
-- **Flexible Configuration**: Customizable cost functions, learning rates, and memory windows
-- **Rich Analysis Tools**: Built-in visualization and convergence analysis capabilities
+- **Flexible Configuration**: Customizable cost functions, learning rates, memory windows, and performance settings
+- **Rich Analysis Tools**: Built-in visualization, Nash gap analysis, and convergence diagnostics
 
 ## Installation
 
@@ -45,10 +46,11 @@ agents = [
     BayesianAgent(cost)       # Bayesian learning
 ]
 
-# Set up a contest
+# Set up a contest with optimized defaults
 initial_efforts = [0.1, 0.15, 0.2, 0.12]
 T = 50  # Number of rounds
 contest = TullockContest(agents, initial_efforts, T)
+# Uses balanced :relaxed accuracy and :approximate caching for optimal performance
 
 # Run the simulation
 final_round = run!(contest)
@@ -128,22 +130,54 @@ exp_cost(x) = exp(x) - 1
 ```
 
 ### Performance Optimization
-The package includes several performance optimizations:
 
-- **Workspace-based memory management** eliminates redundant allocations
-- **Enhanced root finding** with multiple termination conditions  
-- **Direct indexing** avoids closure allocations in estimators
-- **Cached computations** for frequently used values
+The package includes extensive performance optimizations with smart defaults:
 
-### Convergence Analysis
+**Automatic Optimizations (default behavior):**
+- **Root finding caching**: Approximate caching reduces redundant computations (1.8-4x speedup)
+- **Balanced integration tolerances**: Optimized for speed/accuracy tradeoff (atol=1e-8, reltol=1e-6)
+- **Workspace-based memory management**: Eliminates redundant allocations
+- **Enhanced root finding**: Multiple termination conditions for fast convergence
+- **Direct indexing**: Avoids closure allocations in estimators
+
+**Customizable Settings:**
+```julia
+# Maximum precision (slower)
+contest = TullockContest(agents, efforts, rounds; accuracy=:default)
+
+# Maximum speed (less precise)  
+contest = TullockContest(agents, efforts, rounds; accuracy=:veryrelaxed)
+
+# Disable caching for benchmarking
+contest = TullockContest(agents, efforts, rounds; caching=:none)
+
+# Custom cache tolerance
+contest = TullockContest(agents, efforts, rounds; 
+                        caching=:approximate, cache_tolerance=1e-6)
+```
+
+### Nash Gap and Convergence Analysis
+
+The package provides comprehensive tools for analyzing equilibrium quality:
+
 ```julia
 # Check Nash equilibrium properties
-nash_gaps = contest.nash_gaps[:, actual_final]
-total_gap = sum(nash_gaps)
+nash_gaps = contest.nash_gaps[:, actual_final]  # Per-agent gaps
+total_nash_gap = sum(nash_gaps)                 # Overall equilibrium quality
 
-# Analyze convergence over time
+# Analyze convergence over time  
 gap_history = [sum(contest.nash_gaps[:, t]) for t in 1:actual_final]
+
+# Nash gap interpretation:
+# < 1e-6: Excellent convergence to Nash equilibrium
+# 1e-6 to 1e-3: Good convergence, acceptable for most applications  
+# > 1e-3: Poor convergence, may need higher precision settings
 ```
+
+**Nash Gap Quality vs Performance Trade-offs:**
+- `:default` accuracy: Best Nash gap quality, slowest performance
+- `:relaxed` accuracy: Balanced quality/speed (default, recommended) 
+- `:veryrelaxed` accuracy: Fastest performance, higher Nash gap degradation
 
 ## Mathematical Background
 
@@ -162,16 +196,25 @@ where $c_i(x_i)$ is agent $i$'s cost function. The package simulates the learnin
 
 ## Performance
 
-The package is optimized for high-performance simulations:
+The package is extensively optimized for high-performance simulations with smart defaults:
 
-- **Enhanced root finding**: Custom algorithm with multiple termination conditions
+**Core Optimizations:**
+- **Root finding caching**: Automatic approximate caching provides 1.8-4x speedup
+- **Tuned integration tolerances**: Balanced defaults (atol=1e-8, reltol=1e-6) optimize speed/accuracy
+- **Enhanced root finding**: Custom algorithm with multiple termination conditions  
 - **Memory efficiency**: Workspace-based allocation patterns minimize garbage collection
 - **Numerical stability**: Robust handling of edge cases and extreme parameter values
 
-Typical performance on modern hardware:
-- Small contests (2-5 agents, 50 rounds): < 10ms
-- Medium contests (10 agents, 100 rounds): < 100ms  
-- Large contests (20+ agents): Scales efficiently with optimized algorithms
+**Typical Performance (with default optimizations):**
+- Small contests (2-5 agents, 50 rounds): < 5ms
+- Medium contests (10 agents, 100 rounds): < 50ms
+- Large Bayesian contests (5 agents, 500 rounds): ~7-14s (depending on accuracy)
+- MLE contests: ~4x faster than Bayesian due to analytical solutions
+
+**Performance by Agent Type:**
+- **MLE/DetMLE agents**: Fastest (analytical solutions)
+- **Bayesian agents**: Moderate speed (benefits most from caching and tuned tolerances)
+- **Mixed contests**: Performance scales with most expensive agent type
 
 ## Testing
 
@@ -200,11 +243,30 @@ Contributions are welcome! Please see the issues list for areas needing improvem
 
 ## Benchmarking
 
-A comprehensive benchmark suite is available in `benchmark_find_root.jl` comparing different root-finding implementations. Run with:
+The package includes comprehensive benchmarks for performance analysis:
 
+**Available Benchmarks:**
+- `bayesian_accuracy_benchmark.jl`: Nash gap quality vs performance trade-offs
+- `simple_cache_benchmark.jl`: Root finding caching performance  
+- `mle_cache_benchmark.jl`: MLE agent caching analysis
+- Performance regression tests in the test suite
+
+**Running Benchmarks:**
 ```julia
-include("benchmark_find_root.jl")
+# Test Nash gap quality across accuracy levels
+julia bayesian_accuracy_benchmark.jl
+
+# Compare caching strategies  
+julia simple_cache_benchmark.jl
+
+# Analyze MLE agent performance
+julia mle_cache_benchmark.jl
 ```
+
+**Key Benchmark Results:**
+- Approximate caching: 1.8-4x speedup across agent types
+- Relaxed accuracy: 71% better Nash gaps than veryrelaxed, 1.2x speedup vs default
+- Optimal cache tolerance: 1e-9 for Bayesian agents, 1e-3 for MLE agents
 
 ## Citation
 

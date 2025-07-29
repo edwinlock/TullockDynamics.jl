@@ -137,6 +137,163 @@ function find_root(f::F, l::Float64)::Float64 where F
     return result
 end
 
+"""
+    find_root_cached(f::Function, l::Float64; approximate_cache::Bool=false, cache_tolerance::Float64=1e-9) -> Float64
+
+Enhanced version of find_root with internal function value caching.
+
+Uses the same algorithm as find_root but caches function evaluations to avoid redundant 
+computations. Supports both exact and approximate cache matching.
+
+# Arguments
+- `f::Function`: A strictly decreasing function to find the root of
+- `l::Float64`: Lower bound of the search interval (must satisfy f(l) ≥ 0)
+- `approximate_cache::Bool=false`: If true, allows cache hits for nearby x values
+- `cache_tolerance::Float64=1e-9`: Tolerance for approximate cache hits (when approximate_cache=true)
+
+# Returns
+- `Float64`: The root x where f(x) ≈ 0 and x ≥ l
+
+# Caching Strategies
+- **Exact caching** (default): Only exact x matches return cached values
+- **Approximate caching**: Returns cached f(x_cached) if |x - x_cached| < cache_tolerance
+
+# Performance
+The caching provides speedup when:
+- Function evaluations are expensive (common in Bayesian agents)
+- The binary search revisits similar x values
+- Multiple candidates are evaluated at the end
+
+Memory overhead is minimal (typically < 1KB per call).
+
+# Examples
+```julia
+# Use exact caching (default)
+root = find_root_cached(expensive_function, 0.0)
+
+# Use approximate caching for smooth expensive functions
+root = find_root_cached(smooth_function, 0.0; approximate_cache=true, cache_tolerance=1e-9)
+```
+"""
+function find_root_cached(f::F, l::Float64; approximate_cache::Bool=false, cache_tolerance::Float64=1e-9)::Float64 where F
+    # Cache: Dict mapping x values to f(x) values
+    cache = Dict{Float64, Float64}()
+    
+    # Cached function wrapper with both exact and approximate matching
+    function cached_f(x::Float64)::Float64
+        # First check for exact match (fastest)
+        if haskey(cache, x)
+            return cache[x]
+        end
+        
+        # If approximate caching is enabled, check for nearby values
+        if approximate_cache
+            for (cached_x, cached_value) in cache
+                if abs(x - cached_x) < cache_tolerance
+                    # Store under the new key for future exact matches
+                    cache[x] = cached_value
+                    return cached_value
+                end
+            end
+        end
+        
+        # Cache miss - compute new value
+        result = f(x)::Float64
+        cache[x] = result
+        return result
+    end
+    
+    @assert cached_f(l) ≥ 0 "Function must satisfy f(l) ≥ 0."
+    
+    # Phase 1: Improved bracketing with exponential growth capping
+    lower = l
+    upper = max(l + 1.0, 2.0)
+    max_bracket = 1e6  # Reasonable upper limit
+    while cached_f(upper) > 0 && upper < max_bracket
+        upper *= 2.0  # Double instead of squaring
+    end
+    
+    # Phase 2: Enhanced binary search with multiple termination conditions
+    max_iterations = 100
+    iteration = 0
+    f_lower = cached_f(lower)
+    f_upper = cached_f(upper)
+    
+    while iteration < max_iterations
+        iteration += 1
+        
+        # Termination condition 1: Bracket is small enough
+        if upper - lower <= MAXGAP
+            break
+        end
+        
+        mid = (upper + lower) / 2
+        f_mid = cached_f(mid)
+        
+        # Termination condition 2: Function value is essentially zero (high accuracy)
+        if abs(f_mid) <= FUNCTION_TOL
+            return mid
+        end
+        
+        # Standard binary search update with cached function values
+        if f_mid > 0
+            lower = mid
+            f_lower = f_mid
+        else
+            upper = mid
+            f_upper = f_mid
+        end
+        
+        # Termination condition 3: Convergence detection
+        bracket_ratio = (upper - lower) / (upper + lower)
+        if bracket_ratio < 1e-14
+            break
+        end
+    end
+    
+    # Return the point with the smallest absolute function value
+    mid = (upper + lower) / 2
+    candidates = [lower, mid, upper]
+    f_values = [f_lower, cached_f(mid), f_upper]  # mid might be cached already
+    best_idx = argmin(abs.(f_values))
+    
+    result = candidates[best_idx]
+    @assert result ≥ l "Something went wrong with the binary search."
+    
+    # Cache is automatically cleaned up when function returns
+    return result
+end
+
+"""
+    find_root_with_caching(f::Function, l::Float64, workspace::ContestWorkspace) -> Float64
+
+Choose the appropriate root finding method based on workspace caching configuration.
+
+# Arguments
+- `f::Function`: Function to find root of
+- `l::Float64`: Lower bound for root finding
+- `workspace::ContestWorkspace`: Contest workspace containing caching settings
+
+# Returns
+- `Float64`: The root of the function
+
+# Caching Behavior
+- `:none`: Uses original find_root (no caching)
+- `:exact`: Uses find_root_cached with exact matching
+- `:approximate`: Uses find_root_cached with approximate matching using workspace.cache_tolerance
+"""
+function find_root_with_caching(f::F, l::Float64, workspace::ContestWorkspace)::Float64 where F
+    if workspace.caching == :none
+        return find_root(f, l)
+    elseif workspace.caching == :exact
+        return find_root_cached(f, l; approximate_cache=false)
+    elseif workspace.caching == :approximate
+        return find_root_cached(f, l; approximate_cache=true, cache_tolerance=workspace.cache_tolerance)
+    else
+        error("Invalid caching mode: $(workspace.caching)")
+    end
+end
+
 
 """
 Implement binary search root-finding method for function `f` on interval [l, ∞).

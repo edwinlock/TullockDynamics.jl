@@ -27,10 +27,7 @@ function set_efforts!(contest::TullockContest, t::Int)
             # Determine estimate of total effort of others
             estim = agent.estimator(contest, i, mem_window)
             # Agent makes their move
-            br = best_response(agent, estim;
-                min_other_efforts=contest.workspace.min_other_efforts[i],
-                max_other_efforts=contest.workspace.max_other_efforts[i],
-            )
+            br = best_response(agent, estim, contest.workspace, i)
             # Compute and store new effort
             prev_effort = contest.efforts[i, t-1]
             x = agent.α(t) * br + (1-agent.α(t)) * prev_effort

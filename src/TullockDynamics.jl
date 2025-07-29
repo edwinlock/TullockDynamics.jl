@@ -82,6 +82,7 @@ using Plots
 using ProgressMeter
 using Measures
 
+include("workspace.jl")
 include("agents.jl")
 include("contests.jl")
 include("dynamics.jl")
@@ -101,6 +102,6 @@ export set_efforts!, set_utilities!, step!, run!
 export max_likelihood_estimator, deterministic_max_likelihood_estimator, dumb_estimator, bayesian_estimator, classic_estimator
 export clear_bayesian_cache!
 # Exports from utils.jl
-export find_root, show, final_efforts, visualise, convergence_status
+export find_root, find_root_cached, find_root_with_caching, show, final_efforts, visualise, convergence_status
 
 end # module TullockDynamics

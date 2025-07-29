@@ -27,12 +27,11 @@
         # Test workspace is properly initialized
         @test contest.workspace isa TullockDynamics.ContestWorkspace
         @test length(contest.efforts[:,1]) == 3
-        @test contest.workspace.weights_obj isa StatsBase.Weights
         @test contest.workspace.min_total_efforts > 0.0
         @test contest.workspace.max_total_efforts >= contest.workspace.min_total_efforts
         @test length(contest.workspace.min_other_efforts) == 3
         @test length(contest.workspace.max_other_efforts) == 3
-        @test contest.workspace.total_effort == 0.0
+        @test all(contest.workspace.total_efforts .== 0.0)
     end
     
     @testset "TullockContest validation" begin
@@ -111,13 +110,13 @@
         @test workspace.max_total_efforts ≈ expected_max_total
         
         # Test per-agent bounds
-        # Agent 1: min_other = 0.05 - 1.0 = -0.95, max_other = 2.0 - 0.02 = 1.98
-        @test workspace.min_other_efforts[1] ≈ -0.95
-        @test workspace.max_other_efforts[1] ≈ 1.98
+        # Agent 1: min_other = min_total - χ[1] = 0.05 - 0.02 = 0.03, max_other = max_total - max_effort[1] = 2.0 - 1.0 = 1.0
+        @test workspace.min_other_efforts[1] ≈ 0.03
+        @test workspace.max_other_efforts[1] ≈ 1.0
         
-        # Agent 2: min_other = 0.05 - 1.0 = -0.95, max_other = 2.0 - 0.03 = 1.97
-        @test workspace.min_other_efforts[2] ≈ -0.95  
-        @test workspace.max_other_efforts[2] ≈ 1.97
+        # Agent 2: min_other = min_total - χ[2] = 0.05 - 0.03 = 0.02, max_other = max_total - max_effort[2] = 2.0 - 1.0 = 1.0
+        @test workspace.min_other_efforts[2] ≈ 0.02  
+        @test workspace.max_other_efforts[2] ≈ 1.0
     end
     
     @testset "ContestWorkspace with finite max_effort" begin

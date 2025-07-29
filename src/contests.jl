@@ -1,23 +1,5 @@
 using StatsBase
 
-"""
-Workspace for intermediate computations to avoid repeated allocations.
-"""
-mutable struct ContestWorkspace
-    # Pre-allocated buffers updated in every round
-    other_efforts::Matrix{Float64}          # Buffer for the total other efforts, for each agent i in each round
-    total_efforts::Vector{Float64}          # Total effort in each round
-    
-    # Pre-computed constants (computed once in constructor)
-    min_total_efforts::Float64              # sum of agents' minimal efforts
-    max_total_efforts::Float64              # sum of agents' maximal efforts 
-    min_other_efforts::Vector{Float64}      # for each agent, sum of other agents' minimal efforts
-    max_other_efforts::Vector{Float64}      # for each agent, sum of other agents' maximal efforts
-
-    # Current round
-    current_round::Int
-end
-
 struct TullockContest
     agents::Vector{Agent}
     efforts::Matrix{Float64}
@@ -31,7 +13,7 @@ num_rounds(contest::TullockContest) = size(contest.efforts)[2]
 
 
 """
-    TullockContest(agents::Vector{Agent}, x::Vector{Float64}, T::Int) -> TullockContest
+    TullockContest(agents::Vector{Agent}, x::Vector{Float64}, T::Int; accuracy::Symbol = :relaxed, caching::Symbol = :approximate, cache_tolerance::Float64 = 1e-9) -> TullockContest
 
 Create a Tullock contest simulation with specified agents, initial efforts, and time horizon.
 
@@ -43,6 +25,15 @@ contest data structure with optimized workspace for efficient simulation.
 - `agents::Vector{Agent}`: Vector of competing agents (minimum 2 required)
 - `x::Vector{Float64}`: Initial effort levels for each agent (must match length of agents)
 - `T::Int`: Number of rounds to simulate (must be positive)
+- `accuracy::Symbol = :relaxed`: Integration tolerance level for numerical methods
+  - `:default`: High precision (atol=1e-10, reltol=1e-8) - slowest but most accurate
+  - `:relaxed`: Balanced precision (atol=1e-8, reltol=1e-6) - default, good speed/accuracy balance
+  - `:veryrelaxed`: Lower precision (atol=1e-5, reltol=1e-3) - fastest with small accuracy loss
+- `caching::Symbol = :approximate`: Root finding caching strategy for performance optimization
+  - `:none`: No caching (uses original find_root)
+  - `:exact`: Exact caching (cache hits only for identical x values)
+  - `:approximate`: Approximate caching (default, cache hits for nearby x values within tolerance) 
+- `cache_tolerance::Float64 = 1e-9`: Tolerance for approximate caching (only used when caching=:approximate)
 
 # Returns
 - `TullockContest`: Initialized contest ready for simulation
@@ -65,6 +56,7 @@ The contest maintains several matrices tracking the dynamics:
 - **Workspace optimization**: Pre-allocated buffers eliminate memory allocations
 - **Pre-computed constants**: Agent bounds calculated once for efficiency
 - **Optimized data structures**: Efficient matrix layouts for cache performance
+- **Configurable integration tolerances**: Adjustable precision for numerical integration (affects Bayesian agents only)
 
 # Example
 ```julia
@@ -73,9 +65,19 @@ cost1(x) = x^2
 cost2(x) = 0.5 * x^1.5
 agents = [MLEAgent(cost1), DetMLEAgent(cost2)]
 
-# Set up contest with initial efforts and 50 rounds
+# Set up contest with initial efforts and 50 rounds (uses default :relaxed accuracy and approximate caching)
 initial_efforts = [0.1, 0.15]
 contest = TullockContest(agents, initial_efforts, 50)
+
+# For highest precision, use default accuracy
+bayesian_agents = [BayesianAgent(cost1), BayesianAgent(cost2)]
+precise_contest = TullockContest(bayesian_agents, initial_efforts, 50; accuracy=:default)
+
+# For maximum speed, use veryrelaxed accuracy
+fast_contest = TullockContest(bayesian_agents, initial_efforts, 50; accuracy=:veryrelaxed)
+
+# Disable caching if needed for testing or comparison
+no_cache_contest = TullockContest(agents, initial_efforts, 50; caching=:none)
 
 # Run simulation
 final_round = run!(contest)
@@ -86,22 +88,32 @@ final_round = run!(contest)
 - [`Agent`](@ref): Agent constructor for custom agents
 - [`visualise`](@ref): Plot contest dynamics
 """
-function TullockContest(agents::Vector{Agent}, x::Vector{Float64}, T::Int)
+function TullockContest(agents::Vector{Agent}, x::Vector{Float64}, T::Int; accuracy::Symbol = :relaxed, caching::Symbol = :approximate, cache_tolerance::Float64 = 1e-9)
     @assert length(agents) >= 2 "Contest must have at least 2 agents."
     @assert length(agents) == length(x) "Length of effort vector must match number of agents."
     @assert T ≥ 1 "Must have positive number of rounds."
+    @assert caching in [:none, :exact, :approximate] "Caching must be :none, :exact, or :approximate."
     num_agents = length(agents)
     # Create matrices
     efforts = zeros(num_agents, T)
     winners = falses(num_agents, T)
     utilities = zeros(num_agents, T)
     nash_gaps = zeros(num_agents, T)
-    # Set initial efforts
+    # Set initial efforts
     efforts[:,1] .= x
     
     # Initialize workspace
     other_efforts_buffer = zeros(num_agents, T)
     total_efforts_buffer = zeros(T)
+    # Set tolerance values based on accuracy level
+    atol, reltol = if accuracy == :relaxed
+        1e-8, 1e-6  # More stringent: was 1e-6, 1e-4
+    elseif accuracy == :veryrelaxed  
+        1e-5, 1e-3
+    else  # :default
+        1e-10, 1e-8
+    end
+    
     # Pre-compute constants for workspace
     min_total_efforts = sum(agent.χ for agent in agents)
     max_total_efforts = sum(agent.max_effort for agent in agents)
@@ -115,6 +127,10 @@ function TullockContest(agents::Vector{Agent}, x::Vector{Float64}, T::Int)
         max_total_efforts,
         min_other_efforts,
         max_other_efforts,
+        atol,
+        reltol,
+        caching,
+        cache_tolerance,
         current_round
     )
     

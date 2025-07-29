@@ -58,7 +58,7 @@ function max_likelihood_estimator(
         return max_agent_effort(contest.agents[agent_idx].cost)
     end
     
-    return find_root(f, 0.0)
+    return find_root_with_caching(f, 0.0, contest.workspace)
 end
 
 
@@ -130,7 +130,7 @@ function deterministic_max_likelihood_estimator(
         return max_agent_effort(contest.agents[agent_idx].cost)
     end
     
-    return find_root(f, 0.0)
+    return find_root_with_caching(f, 0.0, contest.workspace)
 end
 
 
@@ -255,7 +255,9 @@ where:
 - The product reflects the likelihood of the observed outcomes
 
 # Performance Notes
-Uses numerical integration (QuadGKJL) to normalize the distribution.
+Uses numerical integration (QuadGKJL) to normalize the distribution. Integration tolerances
+are controlled by the contest's workspace settings, which can be adjusted via the `accuracy`
+parameter in `TullockContest` constructor for performance optimization.
 """
 function bayesian_estimator(
         contest::TullockContest,
@@ -274,15 +276,38 @@ function bayesian_estimator(
     effort_values = @view contest.efforts[agent_idx, window]
     
     # Hard-code the uniform distribution on domain (lb, ub)
-    initial_pdf(y) = lb ≤ y ≤ ub ? 1. / (ub - lb) : 0.
-    f(y,p) = exp( l*log(y)  + log(initial_pdf(y)) - sum(log(x + y) for x ∈ effort_values) )
+    # initial_pdf(y) = lb ≤ y ≤ ub ? 1. / (ub - lb) : 0.
+    # log_init_pdf = log(1. / (ub - lb))
+
+    f(y,p) = logdomain_integrand(y, effort_values, l)
     
     # Compute the integral of f on domain [lb, ub] to normalise f
     domain = (lb, ub)
     prob = IntegralProblem(f, domain)
-    M = solve(prob, QuadGKJL()).u
+    M = solve(prob, QuadGKJL(), 
+              abstol=contest.workspace.atol, 
+              reltol=contest.workspace.reltol).u
     
     # Define the normalized estimator μ
     μ(y) = lb ≤ y ≤ ub ? f(y,0) / M : 0.
     return μ
+end
+
+
+
+"""
+    logdomain_integrand(y, x_vals, l)
+
+Evaluates the log-domain form of:
+    f(y) = y^l / ∏(x_i + y)
+as:
+    f(y) = exp( l*log(y) - sum(log(x_i + y)) )
+"""
+function logdomain_integrand(y, x_vals::AbstractVector{<:Real}, l::Int)
+    @assert y ≥ 0  "y out of bounds"
+    acc = zero(y)
+    @inbounds @simd for i in eachindex(x_vals)
+        acc += log(x_vals[i] + y)
+    end
+    return exp(l * log(y) - acc)
 end

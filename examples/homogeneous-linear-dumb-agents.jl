@@ -2,10 +2,10 @@ using TullockDynamics
 
 linear_cost(x) = x
 
-function generate_dumb_agent_contest(n::Int, T::Int; χ)
+function generate_dumb_agent_contest(n::Int, T::Int; χ, accuracy::Symbol = :default)
     agents = [DumbAgent(linear_cost; χ=χ) for _ in 1:n]
     initial_efforts = [rand() for _ in 1:n]
-    return TullockContest(agents, initial_efforts, T)
+    return TullockContest(agents, initial_efforts, T; accuracy=accuracy)
 end
 
 # Set parameters

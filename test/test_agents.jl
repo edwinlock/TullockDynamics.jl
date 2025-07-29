@@ -107,12 +107,8 @@
         @test br >= agent.χ
         @test br < 10.0  # Should be reasonable
         
-        # Test with bounds
-        min_other = 0.5
-        max_other = 2.0
-        br_bounded = best_response(agent, opponent_effort; 
-                                  min_other_efforts=min_other, 
-                                  max_other_efforts=max_other)
+        # Test with bounds (bounds are ignored for this function variant)
+        br_bounded = best_response(agent, opponent_effort)
         @test br_bounded >= agent.χ
         
         # Test edge case: zero opponent effort

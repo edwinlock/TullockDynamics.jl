@@ -3,10 +3,10 @@ using Measures
 
 linear_cost(x) = x
 
-function generate_det_MLE_agent_contest(n::Int, T::Int; χ)
+function generate_det_MLE_agent_contest(n::Int, T::Int; χ, accuracy::Symbol = :default)
     agents = [DetMLEAgent(linear_cost; χ=χ) for _ in 1:n]
     initial_efforts = [rand() for _ in 1:n]
-    return TullockContest(agents, initial_efforts, T)
+    return TullockContest(agents, initial_efforts, T; accuracy=accuracy)
 end
 
 # Set parameters

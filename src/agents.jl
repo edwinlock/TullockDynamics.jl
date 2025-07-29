@@ -74,42 +74,63 @@ Implementation makes use of cost functions assumptions that imply
 that agent's utility function u(x, s) has a unique maximum on
 interval [χ, ∞), so we can find the unique root of its derivative.
 """
-function best_response(agent::Agent, s::Float64; _ignore...)
+function best_response(agent::Agent, s::Float64, _ignore...)
     χ::Float64 = agent.χ
     # Define derivative of utility fn u(z, s) of agent wrt z
     d(z) = ForwardDiff.derivative(z -> utility(agent, z, s), z)
     # If d is negative on entire interval [χ, ∞), return lower boundary χ,
     # otherwise find the root of d, which must lie weakly above χ
     x = d(χ) ≤ 0 ? χ : find_root(d, χ)
-    # x = d(χ) ≤ 0 ? χ : find_zero(d, (χ, Inf))
-    # x = d(χ) ≤ 0 ? χ : find_zero(d, χ)
     return x
 end
 
 
 """
-Return best response of `agent` to the belief PDF of opponents' total efforts.
+    best_response(agent::Agent, pdf::Function, workspace::ContestWorkspace, agent_idx::Int) -> Float64
+
+Return the optimal effort level for `agent` given a belief PDF about opponents' total efforts.
+
+This function computes the expected utility-maximizing effort by integrating over the belief 
+distribution using numerical integration. The integration tolerances are controlled by the 
+workspace settings for performance optimization.
+
+# Arguments
+- `agent::Agent`: The agent making the decision
+- `pdf::Function`: Probability density function of opponents' total efforts
+- `workspace::ContestWorkspace`: Contest workspace containing integration tolerances and bounds
+- `agent_idx::Int`: Index of the agent (used for accessing pre-computed bounds)
+
+# Returns
+- `Float64`: Optimal effort level (≥ agent.χ)
+
+# Implementation
+Uses QuadGKJL for numerical integration with workspace-configured tolerances (atol, reltol).
+The integration domain is pre-computed as [min_other_efforts, max_other_efforts] for efficiency.
+
+# Performance
+Integration tolerances can be adjusted via the contest's accuracy parameter:
+- `:default`: Highest precision, slowest
+- `:relaxed`: Balanced precision/speed  
+- `:veryrelaxed`: Lower precision, fastest
 """
-function best_response(agent::Agent, pdf::Function;
-        min_other_efforts,
-        max_other_efforts,
-        _ignore...
-    )
+function best_response(agent::Agent, pdf::Function, workspace::ContestWorkspace, agent_idx::Int)
     χ = agent.χ
-    domain = [min_other_efforts, max_other_efforts]
+    domain = [workspace.min_other_efforts[agent_idx], workspace.max_other_efforts[agent_idx]]
     
     # Define the expected utility function
     function φ(z)
         f = (s, p) -> utility(agent, z, s) * pdf(s)
         prob = IntegralProblem(f, domain)
-        return solve(prob, QuadGKJL()).u
+        return solve(prob, QuadGKJL(), 
+                     abstol=workspace.atol, 
+                     reltol=workspace.reltol).u
     end
     
     # Define derivative of φ
     d(z) = ForwardDiff.derivative(φ, z)
     # If d is negative on entire interval [χ, ∞), return lower boundary χ,
     # otherwise find the root of d, which must lie weakly above χ
-    x = d(χ) ≤ 0 ? χ : find_root(d, χ)
+    x = d(χ) ≤ 0 ? χ : find_root_with_caching(d, χ, workspace)
     return x
 end
 
