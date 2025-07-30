@@ -119,11 +119,26 @@ function best_response(agent::Agent, pdf::Function, workspace::ContestWorkspace,
     
     # Define the expected utility function
     function φ(z)
-        f = (s, p) -> utility(agent, z, s) * pdf(s)
-        prob = IntegralProblem(f, domain)
-        return solve(prob, QuadGKJL(), 
-                     abstol=workspace.atol, 
-                     reltol=workspace.reltol).u
+        f = s -> utility(agent, z, s) * pdf(s)
+        # Use appropriate pre-allocated buffer based on type
+        if z isa Float64
+            segbuf = workspace.bayesian_segbufs_float[agent_idx]
+        else
+            # Create Dual buffer on first use with correct types
+            if workspace.bayesian_segbufs_dual[agent_idx] === nothing
+                domain_type = Float64
+                range_type = typeof(z)
+                error_type = typeof(abs(z))
+                workspace.bayesian_segbufs_dual[agent_idx] = QuadGK.alloc_segbuf(domain_type, range_type, error_type)
+            end
+            segbuf = workspace.bayesian_segbufs_dual[agent_idx]
+        end
+        
+        result, error = quadgk(f, domain[1], domain[2]; 
+                              atol=workspace.atol, 
+                              rtol=workspace.reltol,
+                              segbuf=segbuf)
+        return result
     end
     
     # Define derivative of φ

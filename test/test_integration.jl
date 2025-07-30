@@ -125,7 +125,7 @@
         converged, actual_final = convergence_status(contest, final_round)
         
         # Check workspace scales correctly
-        @test length(contest.workspace.own_efforts) == n_agents
+        @test size(contest.workspace.other_efforts, 1) == n_agents
         @test length(contest.workspace.min_other_efforts) == n_agents
         @test length(contest.workspace.max_other_efforts) == n_agents
         
@@ -157,8 +157,8 @@
             @test actual_final >= 1
             
             # Check workspace is working efficiently
-            @test contest.workspace.own_efforts === contest.workspace.weights_obj.values
-            @test length(contest.workspace.own_efforts) == 2
+            @test size(contest.workspace.other_efforts, 1) == 2
+            @test length(contest.workspace.total_efforts) > 0
         end
     end
     

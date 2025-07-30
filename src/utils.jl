@@ -354,3 +354,20 @@ end
 
 # Plotting functionality has been moved to TullockDynamicsPlotsExt
 # Load Plots.jl to enable visualise() function
+
+"""
+    visualise(contest::TullockContest; kwargs...)
+
+Plot contest dynamics (requires Plots.jl to be loaded).
+
+This function is provided by the TullockDynamicsPlotsExt extension.
+Load Plots.jl to enable this functionality:
+
+```julia
+using Plots
+visualise(contest)
+```
+"""
+function visualise(args...; kwargs...)
+    error("visualise requires Plots.jl to be loaded. Please run: using Plots")
+end

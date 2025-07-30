@@ -282,9 +282,8 @@ Random.seed!(12345)
             @test pdf_estimator(ub + 0.1) == 0
             
             # Test normalization (approximately)
-            using Integrals
-            prob = IntegralProblem((y,p) -> pdf_estimator(y), (lb, ub))
-            integral = solve(prob, QuadGKJL()).u
+            using QuadGK
+            integral, error = quadgk(pdf_estimator, lb, ub)
             @test integral ≈ 1.0 atol=1e-10
         end
         
@@ -311,8 +310,8 @@ Random.seed!(12345)
             ub = contest.workspace.max_other_efforts[1]
             
             # Calculate expected values
-            expected_losses = solve(IntegralProblem((y,p) -> y * pdf_all_losses(y), (lb, ub)), QuadGKJL()).u
-            expected_wins = solve(IntegralProblem((y,p) -> y * pdf_all_wins(y), (lb, ub)), QuadGKJL()).u
+            expected_losses, error1 = quadgk(y -> y * pdf_all_losses(y), lb, ub)
+            expected_wins, error2 = quadgk(y -> y * pdf_all_wins(y), lb, ub)
             
             @test expected_losses > expected_wins
         end
@@ -362,19 +361,14 @@ Random.seed!(12345)
                 # Verify workspace consistency
                 ws = contest.workspace
                 
-                # Check own_efforts matches contest.efforts
-                for i in 1:3
-                    @test ws.own_efforts[i] ≈ contest.efforts[i, t]
-                end
-                
-                # Check total_effort
+                # Check total_efforts matches sum of contest.efforts
                 expected_total = sum(contest.efforts[:, t])
-                @test ws.total_effort ≈ expected_total
+                @test ws.total_efforts[t] ≈ expected_total
                 
                 # Check other_efforts  
                 for i in 1:3
-                    expected_other = ws.total_effort - ws.own_efforts[i]
-                    @test ws.other_efforts[i] ≈ expected_other
+                    expected_other = ws.total_efforts[t] - contest.efforts[i, t]
+                    @test ws.other_efforts[i, t] ≈ expected_other
                 end
                 
                 # Check pre-computed bounds

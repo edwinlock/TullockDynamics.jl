@@ -60,6 +60,11 @@ mutable struct ContestWorkspace
     caching::Symbol                         # Root finding caching strategy: :none, :exact, or :approximate (default: :approximate)
     cache_tolerance::Float64                # Tolerance for approximate caching (default: 1e-9)
     
+    # QuadGK buffer management (two specific buffers per agent)
+    bayesian_segbufs_float::Vector{Any}   # Float64 buffers for best_response
+    bayesian_segbufs_dual::Vector{Any}    # ForwardDiff.Dual buffers for best_response  
+    estimator_segbufs::Vector{Any}        # Float64 buffers for estimator (only needs Float64)
+    
     # Current round
     current_round::Int
 end

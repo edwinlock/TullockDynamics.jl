@@ -279,17 +279,18 @@ function bayesian_estimator(
     # initial_pdf(y) = lb ≤ y ≤ ub ? 1. / (ub - lb) : 0.
     # log_init_pdf = log(1. / (ub - lb))
 
-    f(y,p) = logdomain_integrand(y, effort_values, l)
+    f(y) = logdomain_integrand(y, effort_values, l)
     
     # Compute the integral of f on domain [lb, ub] to normalise f
-    domain = (lb, ub)
-    prob = IntegralProblem(f, domain)
-    M = solve(prob, QuadGKJL(), 
-              abstol=contest.workspace.atol, 
-              reltol=contest.workspace.reltol).u
+    # Use pre-allocated Float64 buffer (estimator doesn't use ForwardDiff)
+    segbuf = contest.workspace.estimator_segbufs[agent_idx]
+    M, error = quadgk(f, lb, ub;
+                     atol=contest.workspace.atol,
+                     rtol=contest.workspace.reltol,
+                     segbuf=segbuf)
     
     # Define the normalized estimator μ
-    μ(y) = lb ≤ y ≤ ub ? f(y,0) / M : 0.
+    μ(y) = lb ≤ y ≤ ub ? f(y) / M : 0.
     return μ
 end
 

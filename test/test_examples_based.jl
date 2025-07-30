@@ -82,9 +82,8 @@ using Random
             @test pdf_func(ub + 0.1) == 0
             
             # Test integration (approximately 1)
-            using Integrals
-            prob = IntegralProblem((y,p) -> pdf_func(y), (lb, ub))
-            integral = solve(prob, QuadGKJL()).u
+            using QuadGK
+            integral, error = quadgk(pdf_func, lb, ub)
             @test integral ≈ 1.0 atol=1e-8
         end
     end
@@ -269,15 +268,11 @@ using Random
             ws = contest.workspace
             
             # Check workspace matches contest state
-            for i in 1:3
-                @test ws.own_efforts[i] ≈ contest.efforts[i, t]
-            end
-            
-            @test ws.total_effort ≈ sum(contest.efforts[:, t])
+            @test ws.total_efforts[t] ≈ sum(contest.efforts[:, t])
             
             for i in 1:3
-                expected_other = ws.total_effort - ws.own_efforts[i] 
-                @test ws.other_efforts[i] ≈ expected_other
+                expected_other = ws.total_efforts[t] - contest.efforts[i, t] 
+                @test ws.other_efforts[i, t] ≈ expected_other
             end
             
             # Check bounds are still correct

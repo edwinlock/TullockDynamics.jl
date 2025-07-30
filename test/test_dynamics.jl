@@ -30,8 +30,8 @@
         @test contest.utilities[1, 2] ≈ expected_utility atol=1e-10
         
         # Check workspace is updated correctly
-        @test contest.workspace.total_effort ≈ total_effort
-        @test contest.workspace.own_efforts ≈ contest.efforts[:, 2]
+        @test contest.workspace.total_efforts[2] ≈ total_effort
+        @test contest.workspace.other_efforts[:, 2] ≈ [total_effort - contest.efforts[i, 2] for i in 1:length(contest.agents)]
         
         # Test utilities are reasonable (between -10 and 1)
         @test all(-10.0 .< contest.utilities[:, 2] .< 1.0)
@@ -61,8 +61,8 @@
         @test contest.nash_gaps[1, 3] ≈ expected_gap atol=1e-10
         
         # Check workspace is used correctly
-        @test contest.workspace.total_effort ≈ total_effort
-        @test contest.workspace.own_efforts ≈ contest.efforts[:, 3]
+        @test contest.workspace.total_efforts[3] ≈ total_effort
+        @test contest.workspace.other_efforts[:, 3] ≈ [total_effort - contest.efforts[i, 3] for i in 1:length(contest.agents)]
         
         # Nash gaps should typically be small for reasonable strategies
         @test all(contest.nash_gaps[:, 3] .< 10.0)
@@ -242,12 +242,12 @@
         @test workspace_after_1 === workspace_after_2
         
         # Buffers should be reused
-        @test workspace_after_1.own_efforts === workspace_after_2.own_efforts
-        @test workspace_after_1.weights_obj === workspace_after_2.weights_obj
+        @test workspace_after_1.other_efforts === workspace_after_2.other_efforts
+        @test workspace_after_1.total_efforts === workspace_after_2.total_efforts
         
         # Values should be updated appropriately
-        @test workspace_after_2.total_effort > 0.0
-        @test sum(workspace_after_2.own_efforts) ≈ workspace_after_2.total_effort
+        @test workspace_after_2.total_efforts[2] > 0.0
+        @test sum(contest.efforts[:, 2]) ≈ workspace_after_2.total_efforts[2]
     end
     
     @testset "Multi-agent dynamics" begin
@@ -270,7 +270,7 @@
         end
         
         # Check workspace dimensions match
-        @test length(contest.workspace.own_efforts) == n_agents
+        @test size(contest.workspace.other_efforts, 1) == n_agents
         @test length(contest.workspace.min_other_efforts) == n_agents
         @test length(contest.workspace.max_other_efforts) == n_agents
     end

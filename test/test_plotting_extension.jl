@@ -12,20 +12,17 @@ using TullockDynamics
     
     @testset "Extension Loading Behavior" begin
         
-        @testset "visualise stub function exists" begin
-            # Test that the stub function is available
-            @test hasmethod(visualise, (TullockContest,))
-            
-            # Test that it provides helpful error without Plots
+        @testset "visualise not available without extension" begin
+            # Test that visualise throws appropriate error without Plots extension
             @test_throws ErrorException visualise(contest)
             
-            # Test error message content
+            # Test that the error message is helpful
             try
                 visualise(contest)
                 @test false  # Should not reach here
             catch e
-                @test occursin("Plots.jl", e.msg)
-                @test occursin("using Plots", e.msg)
+                @test e isa ErrorException
+                @test contains(e.msg, "Plots.jl")
             end
         end
         

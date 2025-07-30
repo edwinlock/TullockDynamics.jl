@@ -77,7 +77,7 @@ module TullockDynamics
 
 using StatsBase  # used to determine winner in each round
 using ForwardDiff  # used to differentiate cost function
-using Integrals  # used to compute Bayesian estimates
+using QuadGK  # used to compute Bayesian estimates
 using ProgressMeter
 
 include("workspace.jl")

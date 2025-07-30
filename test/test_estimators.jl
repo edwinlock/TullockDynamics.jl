@@ -208,6 +208,7 @@
         
         # Test with minimal data (single round)
         contest.efforts[:, 2] = [0.05, 0.15]
+        TullockDynamics.update_workspace!(contest, 2)  # Update workspace after changing efforts
         contest.winners[2, 2] = true
         
         window = 2:2
@@ -231,6 +232,7 @@
         
         # Test with very small efforts
         contest.efforts[:, 4] = [1e-6, 2e-6]
+        TullockDynamics.update_workspace!(contest, 4)  # Update workspace after changing efforts
         contest.winners[2, 4] = true
         
         window_small = 4:4

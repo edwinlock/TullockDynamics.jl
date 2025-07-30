@@ -120,6 +120,13 @@ function TullockContest(agents::Vector{Agent}, x::Vector{Float64}, T::Int; accur
     min_other_efforts = [min_total_efforts - agent.χ for agent in agents]
     max_other_efforts = [max_total_efforts - agent.max_effort for agent in agents]
     current_round = 0
+    
+    # Initialize QuadGK buffers for all agents
+    # Create specific buffer for Float64, leave Dual buffer as nothing (will be created on first use)
+    bayesian_segbufs_float = [QuadGK.alloc_segbuf(Float64, Float64, Float64) for _ in 1:length(agents)]
+    bayesian_segbufs_dual = [nothing for _ in 1:length(agents)]  # Will be created on first Dual use
+    estimator_segbufs = [QuadGK.alloc_segbuf(Float64, Float64, Float64) for _ in 1:length(agents)]
+    
     workspace = ContestWorkspace(
         other_efforts_buffer,
         total_efforts_buffer,
@@ -131,6 +138,9 @@ function TullockContest(agents::Vector{Agent}, x::Vector{Float64}, T::Int; accur
         reltol,
         caching,
         cache_tolerance,
+        bayesian_segbufs_float,
+        bayesian_segbufs_dual,
+        estimator_segbufs,
         current_round
     )
     

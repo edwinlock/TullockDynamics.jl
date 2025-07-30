@@ -89,6 +89,7 @@
         
         # Test with single round window using non-zero efforts
         contest.efforts[:, 2] = [0.01, 0.02]  # Use small but non-zero efforts
+        TullockDynamics.update_workspace!(contest, 2)  # Update workspace after changing efforts
         single_window = 2:2
         for estimator_func in [max_likelihood_estimator, deterministic_max_likelihood_estimator, 
                               dumb_estimator, classic_estimator]
@@ -102,6 +103,8 @@
         contest.winners[1, 3] = true
         contest.efforts[:, 2] = [0.1, 0.05]  # Non-zero efforts
         contest.efforts[:, 3] = [0.15, 0.08]
+        TullockDynamics.update_workspace!(contest, 2)  # Update workspace
+        TullockDynamics.update_workspace!(contest, 3)  # Update workspace
         
         bayesian_func = bayesian_estimator(contest, 1, window)
         @test bayesian_func isa Function
