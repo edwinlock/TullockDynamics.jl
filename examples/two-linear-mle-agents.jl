@@ -1,4 +1,5 @@
 using TullockDynamics
+using Plots  # Required for plotting functionality
 import Random
 Random.seed!(123456789)
 

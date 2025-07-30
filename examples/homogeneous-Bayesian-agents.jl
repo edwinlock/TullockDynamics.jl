@@ -1,5 +1,6 @@
 using Revise
 using TullockDynamics
+using Plots  # Required for plotting functionality
 
 cost(x) = x
 # cost(x) = 0.8x^1.001

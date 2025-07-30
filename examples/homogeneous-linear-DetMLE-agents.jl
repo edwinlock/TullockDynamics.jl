@@ -1,4 +1,5 @@
 using TullockDynamics
+using Plots  # Required for plotting functionality
 using Measures
 
 linear_cost(x) = x

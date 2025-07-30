@@ -86,7 +86,7 @@ final_round = run!(contest)
 # See Also
 - [`run!`](@ref): Execute the contest simulation
 - [`Agent`](@ref): Agent constructor for custom agents
-- [`visualise`](@ref): Plot contest dynamics
+- [`visualise`](@ref): Plot contest dynamics (requires Plots.jl)
 """
 function TullockContest(agents::Vector{Agent}, x::Vector{Float64}, T::Int; accuracy::Symbol = :relaxed, caching::Symbol = :approximate, cache_tolerance::Float64 = 1e-9)
     @assert length(agents) >= 2 "Contest must have at least 2 agents."

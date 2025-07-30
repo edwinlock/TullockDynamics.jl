@@ -32,7 +32,7 @@ and extensive performance enhancements.
 - [`convergence_status`](@ref): Check convergence state
 
 ## Analysis and Utilities
-- [`visualise`](@ref): Plot contest trajectories
+- [`visualise`](@ref): Plot contest trajectories (requires Plots.jl extension)
 - [`nash_gap`](@ref): Measure distance from Nash equilibrium
 - [`find_root`](@ref): Enhanced root finding for numerical solutions
 - [`utility`](@ref): Agent utility calculations
@@ -52,7 +52,7 @@ final_round = run!(contest)
 
 # Analyze results
 converged, actual_final = convergence_status(contest, final_round)
-visualise(contest)
+visualise(contest)  # Requires: using Plots
 ```
 
 # Performance Notes
@@ -78,9 +78,7 @@ module TullockDynamics
 using StatsBase  # used to determine winner in each round
 using ForwardDiff  # used to differentiate cost function
 using Integrals  # used to compute Bayesian estimates
-using Plots
 using ProgressMeter
-using Measures
 
 include("workspace.jl")
 include("agents.jl")

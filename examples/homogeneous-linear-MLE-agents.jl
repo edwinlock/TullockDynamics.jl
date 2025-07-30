@@ -1,4 +1,5 @@
 using TullockDynamics
+# using Plots  # Uncomment to enable plotting
 
 linear_cost(x) = x
 

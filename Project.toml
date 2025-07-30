@@ -6,11 +6,8 @@ version = "0.1.0"
 [deps]
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 Integrals = "de52edbc-65ea-441a-8357-d3a637375a31"
-Measures = "442fdcdd-2543-5da2-b0f3-8c86c306513e"
-Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
-Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 Roots = "f2b01f46-fcfa-551c-844a-d8ac1e96c665"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
@@ -18,16 +15,21 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 [compat]
 ForwardDiff = "0.10.38"
 Integrals = "4.5.0"
-Measures = "0.3.2"
-Plots = "1.40.11"
 ProgressMeter = "1.10.2"
-Revise = "3.7.6"
 Roots = "2.2.8"
 Statistics = "1.11.1"
 StatsBase = "0.34.4"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[weakdeps]
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+Measures = "442fdcdd-2543-5da2-b0f3-8c86c306513e"
+Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
+
+[extensions]
+TullockDynamicsPlotsExt = ["Plots", "Measures"]
 
 [targets]
 test = ["Test"]

@@ -12,6 +12,11 @@
         contest.efforts[:, 4] = [0.18, 0.28, 0.38]
         contest.efforts[:, 5] = [0.22, 0.32, 0.42]
         
+        # Update workspace for each round to sync total_efforts
+        for t in 2:5
+            TullockDynamics.update_workspace!(contest, t)
+        end
+        
         # Set some winners (agent with highest effort wins)
         contest.winners[3, 2] = true  # Agent 3 wins round 2
         contest.winners[3, 3] = true  # Agent 3 wins round 3
@@ -216,6 +221,7 @@
         
         # Test with zero efforts (edge case)
         contest.efforts[:, 3] = [0.0, 0.0]
+        TullockDynamics.update_workspace!(contest, 3)  # Update workspace after changing efforts
         contest.winners[1, 3] = true  # Arbitrary winner when all efforts zero
         
         window_zero = 3:3

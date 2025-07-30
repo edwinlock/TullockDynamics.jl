@@ -16,7 +16,7 @@ TullockDynamics.jl provides a comprehensive framework for modeling and simulatin
 - **Smart Defaults**: Automatically balanced performance and accuracy settings for optimal out-of-the-box experience
 - **Comprehensive Testing**: 1,300+ tests ensuring mathematical correctness and performance
 - **Flexible Configuration**: Customizable cost functions, learning rates, memory windows, and performance settings
-- **Rich Analysis Tools**: Built-in visualization, Nash gap analysis, and convergence diagnostics
+- **Rich Analysis Tools**: Optional visualization (via Plots.jl extension), Nash gap analysis, and convergence diagnostics
 
 ## Installation
 
@@ -28,6 +28,14 @@ Pkg.add("TullockDynamics")
 Or from the Julia REPL:
 ```julia
 ] add TullockDynamics
+```
+
+### Optional Dependencies
+
+For plotting functionality, install Plots.jl:
+```julia
+Pkg.add("Plots")
+using Plots  # Activates plotting extension
 ```
 
 ## Quick Start
@@ -63,7 +71,8 @@ println("Converged: $converged after $actual_final rounds")
 final_efforts = contest.efforts[:, actual_final]
 final_utilities = contest.utilities[:, actual_final]
 
-# Visualize the dynamics
+# Visualize the dynamics (requires Plots.jl)
+using Plots  # Required for plotting functionality
 visualise(contest)
 ```
 
