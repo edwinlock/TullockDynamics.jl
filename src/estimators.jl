@@ -1,6 +1,6 @@
 
 """
-    max_likelihood_estimator(contest::TullockContest, agent_idx::Int, window; _ignore...) -> Float64
+    max_likelihood_estimator(contest::TullockContest, agent_idx::Int, window, atol=1e-8, reltol=1e-6) -> Float64
 
 Estimate total effort of other agents using maximum likelihood estimation based on win history.
 
@@ -8,6 +8,8 @@ Estimate total effort of other agents using maximum likelihood estimation based 
 - `contest::TullockContest`: The contest containing all agent data
 - `agent_idx::Int`: Index of the agent making the estimate
 - `window`: Time window (range or collection) of rounds to use for estimation
+- `atol::Float64=1e-8`: Absolute tolerance (unused, for API compatibility)
+- `reltol::Float64=1e-6`: Relative tolerance (unused, for API compatibility)
 
 # Returns
 - `Float64`: Estimated total effort of all other agents
@@ -25,7 +27,9 @@ Solves the equation `∑(xᵢ/(xᵢ + y)) = w` for `y`, where:
 function max_likelihood_estimator(
         contest::TullockContest,
         agent_idx::Int,
-        window
+        window,
+        atol=1e-8,
+        reltol=1e-6
     )::Float64
 
     # Compute number of wins
@@ -63,7 +67,7 @@ end
 
 
 """
-    deterministic_max_likelihood_estimator(contest::TullockContest, agent_idx::Int, window; _ignore...) -> Float64
+    deterministic_max_likelihood_estimator(contest::TullockContest, agent_idx::Int, window, atol=1e-8, reltol=1e-6) -> Float64
 
 Estimate total effort of other agents using deterministic maximum likelihood based on observed total efforts.
 
@@ -71,6 +75,8 @@ Estimate total effort of other agents using deterministic maximum likelihood bas
 - `contest::TullockContest`: The contest containing all agent data
 - `agent_idx::Int`: Index of the agent making the estimate
 - `window`: Time window (range or collection) of rounds to use for estimation
+- `atol::Float64=1e-8`: Absolute tolerance (unused, for API compatibility)
+- `reltol::Float64=1e-6`: Relative tolerance (unused, for API compatibility)
 
 # Returns
 - `Float64`: Estimated total effort of all other agents
@@ -88,7 +94,9 @@ This variant uses deterministic win probabilities rather than actual win outcome
 function deterministic_max_likelihood_estimator(
         contest::TullockContest,
         agent_idx::Int,
-        window
+        window,
+        atol=1e-8,
+        reltol=1e-6
     )::Float64
 
     ws = contest.workspace
@@ -135,7 +143,7 @@ end
 
 
 """
-    dumb_estimator(contest::TullockContest, agent_idx::Int, window; _ignore...) -> Float64
+    dumb_estimator(contest::TullockContest, agent_idx::Int, window, atol=1e-8, reltol=1e-6) -> Float64
 
 Simple heuristic estimator based on average effort and win rate.
 
@@ -143,6 +151,8 @@ Simple heuristic estimator based on average effort and win rate.
 - `contest::TullockContest`: The contest containing all agent data
 - `agent_idx::Int`: Index of the agent making the estimate
 - `window`: Time window (range or collection) of rounds to use for estimation
+- `atol::Float64=1e-8`: Absolute tolerance (unused, for API compatibility)
+- `reltol::Float64=1e-6`: Relative tolerance (unused, for API compatibility)
 
 # Returns
 - `Float64`: Estimated total effort of all other agents
@@ -163,7 +173,9 @@ This is a simple, fast heuristic that doesn't use sophisticated statistical meth
 function dumb_estimator(
         contest::TullockContest,
         agent_idx::Int,
-        window
+        window,
+        atol=1e-8,
+        reltol=1e-6
     )::Float64
     
     # Compute number of wins
@@ -192,7 +204,7 @@ end
 
 
 """
-    classic_estimator(contest::TullockContest, agent_idx::Int, window; _ignore...) -> Float64
+    classic_estimator(contest::TullockContest, agent_idx::Int, window, atol=1e-8, reltol=1e-6) -> Float64
 
 Perfect information estimator that returns the actual total effort of others in the last round.
 
@@ -200,6 +212,8 @@ Perfect information estimator that returns the actual total effort of others in 
 - `contest::TullockContest`: The contest containing all agent data
 - `agent_idx::Int`: Index of the agent making the estimate
 - `window`: Time window (range or collection) of rounds to use for estimation
+- `atol::Float64=1e-8`: Absolute tolerance (unused, for API compatibility)
+- `reltol::Float64=1e-6`: Relative tolerance (unused, for API compatibility)
 
 # Returns
 - `Float64`: Actual total effort of all other agents in the last round of the window
@@ -215,7 +229,9 @@ have access to this information.
 function classic_estimator(
         contest::TullockContest,
         agent_idx::Int,
-        window
+        window,
+        atol=1e-8,
+        reltol=1e-6
     )::Float64
 
     ws = contest.workspace
