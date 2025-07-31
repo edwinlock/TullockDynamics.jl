@@ -8,33 +8,45 @@ Implementation of the following Tullock dynamics:
 
 import Random
 using StatsBase
+using ProgressMeter
 
 
 """Set efforts of all agents in round `t` of TC `contest`."""
-function set_efforts!(contest::TullockContest, t::Int)
+function set_efforts!(contest::TullockContest, t::Int; threading::Bool=true, atol::Float64=1e-8, reltol::Float64=1e-6)
     @assert t ≥ 2 "In order to update efforts, the round must be t ≥ 2."
 
     # Run through all agents and set their efforts in round t
-    Threads.@threads for i ∈ eachindex(contest.agents)
-        agent = contest.agents[i]
-        # Flip biased coin to determine whether agent updates their effort
-        coin = rand()
-        if coin >= agent.p(t)  # repeat same effort as in previous round
-            contest.efforts[i,t] = contest.efforts[i, t-1]
-        else 
-            # Get memory window for estimator
-            mem_window = agent.h(t)  # get memory window as list or range
-            # Determine estimate of total effort of others
-            estim = agent.estimator(contest, i, mem_window)
-            # Agent makes their move
-            br = best_response(agent, estim, contest.workspace, i)
-            # Compute and store new effort
-            prev_effort = contest.efforts[i, t-1]
-            x = agent.α(t) * br + (1-agent.α(t)) * prev_effort
-            contest.efforts[i,t] = x
+    if threading
+        Threads.@threads for i ∈ eachindex(contest.agents)
+            _update_agent_effort!(contest, i, t, atol, reltol)
+        end
+    else
+        for i ∈ eachindex(contest.agents)
+            _update_agent_effort!(contest, i, t, atol, reltol)
         end
     end
     return nothing
+end
+
+"""Helper function to update a single agent's effort to avoid code duplication."""
+function _update_agent_effort!(contest::TullockContest, i::Int, t::Int, atol::Float64, reltol::Float64)
+    agent = contest.agents[i]
+    # Flip biased coin to determine whether agent updates their effort
+    coin = rand()
+    if coin >= agent.p(t)  # repeat same effort as in previous round
+        contest.efforts[i,t] = contest.efforts[i, t-1]
+    else 
+        # Get memory window for estimator
+        mem_window = agent.h(t)  # get memory window as list or range
+        # Determine estimate of total effort of others
+        estim = agent.estimator(contest, i, mem_window, atol, reltol)
+        # Agent makes their move
+        br = best_response(agent, estim, contest.workspace, i, atol, reltol)
+        # Compute and store new effort
+        prev_effort = contest.efforts[i, t-1]
+        x = agent.α(t) * br + (1-agent.α(t)) * prev_effort
+        contest.efforts[i,t] = x
+    end
 end
 
 
@@ -108,11 +120,11 @@ end
 Run round `t` of TC `contest`. This involves getting agents to update their
 efforts, and then determining a winner.
 """
-function step!(contest::TullockContest, t::Int)
+function step!(contest::TullockContest, t::Int; threading::Bool=true, atol::Float64=1e-8, reltol::Float64=1e-6)
     workspace = contest.workspace
 
     # Let all agents set their efforts if t ≥ 2
-    t ≥ 2 && set_efforts!(contest, t)
+    t ≥ 2 && set_efforts!(contest, t; threading=threading, atol=atol, reltol=reltol)
 
     # Update the workspace now that efforts have been set
     update_workspace!(contest, t)
@@ -146,18 +158,40 @@ WARNING: The returned value may exceed the allocated matrix size if convergence 
 When accessing contest data, always use min(returned_round, num_rounds(contest)) or 
 use the final_efforts() function which safely accesses the last column.
 """
-function run!(contest::TullockContest; ε=-1.0, showprogress=false)
+function run!(contest::TullockContest; ε=-1.0, showprogress=false, threading::Bool=true, accuracy::Symbol=:relaxed)
     T = num_rounds(contest)
     t = 1
-    # prog = Progress(T, enabled=showprogress)
-    prog = ProgressThresh(ε; desc="Minimizing:", enabled=showprogress)
+    
+    # Initialize progress bar
+    if ε > 0
+        prog = ProgressThresh(ε; desc="Nash gap:", enabled=showprogress)
+    else
+        prog = Progress(T; desc="Round:", enabled=showprogress)
+    end
+    
+    # Get tolerances from accuracy setting
+    atol, reltol = accuracy_to_tolerances(accuracy)
+    
     while t ≤ T
-        step!(contest, t)
+        step!(contest, t; threading=threading, atol=atol, reltol=reltol)
         gap = nash_gap(contest, t)
+        
+        # Update progress bar
+        if showprogress
+            if ε > 0
+                update!(prog, gap)
+            else
+                next!(prog)
+            end
+        end
+        
+        # Check convergence
         gap ≤ ε && break
         t += 1
-        # ProgressMeter.next!(prog)
-        # update!(p, gap)
     end
+    
+    # Finish progress bar
+    showprogress && finish!(prog)
+    
     return t
 end

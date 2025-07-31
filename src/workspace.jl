@@ -19,9 +19,9 @@ and expensive computations during simulation.
 - `min_other_efforts::Vector{Float64}`: For each agent, sum of other agents' minimum efforts
 - `max_other_efforts::Vector{Float64}`: For each agent, sum of other agents' maximum efforts
 
-## Integration Configuration
-- `atol::Float64`: Absolute tolerance for numerical integration (affects Bayesian agents)
-- `reltol::Float64`: Relative tolerance for numerical integration (affects Bayesian agents)
+## Root Finding Configuration
+- `caching::Symbol`: Root finding caching strategy (:none, :exact, or :approximate)
+- `cache_tolerance::Float64`: Tolerance for approximate caching
 
 ## Simulation State
 - `current_round::Int`: Current round number (for tracking simulation progress)
@@ -32,14 +32,9 @@ and expensive computations during simulation.
 - **Configurable precision**: Adjustable integration tolerances for performance/accuracy tradeoff
 - **Cache-friendly**: Optimized data layout for better memory access patterns
 
-# Integration Tolerance Levels
-The `atol` and `reltol` fields are set based on the contest's `accuracy` parameter:
-- `:default`: atol=1e-10, reltol=1e-8 (highest precision, slowest)
-- `:relaxed`: atol=1e-8, reltol=1e-6 (default, balanced precision/speed)
-- `:veryrelaxed`: atol=1e-5, reltol=1e-3 (lower precision, fastest)
-
-These tolerances only affect Bayesian agents, which use numerical integration.
-Other agent types (MLE, DetMLE, Dumb) use analytical solutions and are unaffected.
+# Integration Tolerances
+Integration tolerances are now passed dynamically to the `run!` function via the `accuracy` parameter.
+This allows the same contest to be run with different precision levels without reconstruction.
 """
 mutable struct ContestWorkspace
     # Pre-allocated buffers updated in every round
@@ -51,10 +46,6 @@ mutable struct ContestWorkspace
     max_total_efforts::Float64              # sum of agents' maximal efforts 
     min_other_efforts::Vector{Float64}      # for each agent, sum of other agents' minimal efforts
     max_other_efforts::Vector{Float64}      # for each agent, sum of other agents' maximal efforts
-
-    # Integration tolerances
-    atol::Float64                           # Absolute tolerance for numerical integration
-    reltol::Float64                         # Relative tolerance for numerical integration
 
     # Root finding configuration  
     caching::Symbol                         # Root finding caching strategy: :none, :exact, or :approximate (default: :approximate)

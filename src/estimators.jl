@@ -262,7 +262,9 @@ parameter in `TullockContest` constructor for performance optimization.
 function bayesian_estimator(
         contest::TullockContest,
         agent_idx::Int,
-        window
+        window,
+        atol,
+        rtol,
     )
     # Compute number of losses
     l = 0
@@ -285,8 +287,8 @@ function bayesian_estimator(
     # Use pre-allocated Float64 buffer (estimator doesn't use ForwardDiff)
     segbuf = contest.workspace.estimator_segbufs[agent_idx]
     M, error = quadgk(f, lb, ub;
-                     atol=contest.workspace.atol,
-                     rtol=contest.workspace.reltol,
+                     atol=atol,
+                     rtol=rtol,
                      segbuf=segbuf)
     
     # Define the normalized estimator μ

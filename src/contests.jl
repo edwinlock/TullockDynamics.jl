@@ -13,6 +13,21 @@ num_rounds(contest::TullockContest) = size(contest.efforts)[2]
 
 
 """
+Convert accuracy symbol to (atol, reltol) tolerance values for numerical integration.
+"""
+function accuracy_to_tolerances(accuracy::Symbol)
+    if accuracy == :relaxed
+        return 1e-8, 1e-6  # More stringent: was 1e-6, 1e-4
+    elseif accuracy == :veryrelaxed  
+        return 1e-5, 1e-3
+    elseif accuracy == :strict
+        return 1e-14, 1e-12  # Ultra high precision for maximum convergence accuracy
+    else  # :default
+        return 1e-10, 1e-8
+    end
+end
+
+"""
     TullockContest(agents::Vector{Agent}, x::Vector{Float64}, T::Int; accuracy::Symbol = :relaxed, caching::Symbol = :approximate, cache_tolerance::Float64 = 1e-9) -> TullockContest
 
 Create a Tullock contest simulation with specified agents, initial efforts, and time horizon.
@@ -26,7 +41,8 @@ contest data structure with optimized workspace for efficient simulation.
 - `x::Vector{Float64}`: Initial effort levels for each agent (must match length of agents)
 - `T::Int`: Number of rounds to simulate (must be positive)
 - `accuracy::Symbol = :relaxed`: Integration tolerance level for numerical methods
-  - `:default`: High precision (atol=1e-10, reltol=1e-8) - slowest but most accurate
+  - `:strict`: Ultra-high precision (atol=1e-14, reltol=1e-12) - slowest but maximum accuracy
+  - `:default`: High precision (atol=1e-10, reltol=1e-8) - very accurate
   - `:relaxed`: Balanced precision (atol=1e-8, reltol=1e-6) - default, good speed/accuracy balance
   - `:veryrelaxed`: Lower precision (atol=1e-5, reltol=1e-3) - fastest with small accuracy loss
 - `caching::Symbol = :approximate`: Root finding caching strategy for performance optimization
@@ -88,7 +104,7 @@ final_round = run!(contest)
 - [`Agent`](@ref): Agent constructor for custom agents
 - [`visualise`](@ref): Plot contest dynamics (requires Plots.jl)
 """
-function TullockContest(agents::Vector{Agent}, x::Vector{Float64}, T::Int; accuracy::Symbol = :relaxed, caching::Symbol = :approximate, cache_tolerance::Float64 = 1e-9)
+function TullockContest(agents::Vector{Agent}, x::Vector{Float64}, T::Int; caching::Symbol = :approximate, cache_tolerance::Float64 = 1e-9)
     @assert length(agents) >= 2 "Contest must have at least 2 agents."
     @assert length(agents) == length(x) "Length of effort vector must match number of agents."
     @assert T ≥ 1 "Must have positive number of rounds."
@@ -105,14 +121,6 @@ function TullockContest(agents::Vector{Agent}, x::Vector{Float64}, T::Int; accur
     # Initialize workspace
     other_efforts_buffer = zeros(num_agents, T)
     total_efforts_buffer = zeros(T)
-    # Set tolerance values based on accuracy level
-    atol, reltol = if accuracy == :relaxed
-        1e-8, 1e-6  # More stringent: was 1e-6, 1e-4
-    elseif accuracy == :veryrelaxed  
-        1e-5, 1e-3
-    else  # :default
-        1e-10, 1e-8
-    end
     
     # Pre-compute constants for workspace
     min_total_efforts = sum(agent.χ for agent in agents)
@@ -134,8 +142,6 @@ function TullockContest(agents::Vector{Agent}, x::Vector{Float64}, T::Int; accur
         max_total_efforts,
         min_other_efforts,
         max_other_efforts,
-        atol,
-        reltol,
         caching,
         cache_tolerance,
         bayesian_segbufs_float,

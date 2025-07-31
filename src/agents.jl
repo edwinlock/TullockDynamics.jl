@@ -113,7 +113,7 @@ Integration tolerances can be adjusted via the contest's accuracy parameter:
 - `:relaxed`: Balanced precision/speed  
 - `:veryrelaxed`: Lower precision, fastest
 """
-function best_response(agent::Agent, pdf::Function, workspace::ContestWorkspace, agent_idx::Int)
+function best_response(agent::Agent, pdf::Function, workspace::ContestWorkspace, agent_idx::Int, atol::Float64, rtol::Float64)
     χ = agent.χ
     domain = [workspace.min_other_efforts[agent_idx], workspace.max_other_efforts[agent_idx]]
     
@@ -135,8 +135,8 @@ function best_response(agent::Agent, pdf::Function, workspace::ContestWorkspace,
         end
         
         result, error = quadgk(f, domain[1], domain[2]; 
-                              atol=workspace.atol, 
-                              rtol=workspace.reltol,
+                              atol=atol, 
+                              rtol=rtol,
                               segbuf=segbuf)
         return result
     end

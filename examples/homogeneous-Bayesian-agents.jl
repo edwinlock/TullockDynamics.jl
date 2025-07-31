@@ -5,19 +5,19 @@ using Plots  # Required for plotting functionality
 cost(x) = x
 # cost(x) = 0.8x^1.001
 
-function generate_Bayesian_agent_contest(n::Int, T::Int; χ, accuracy::Symbol = :relaxed)
+function generate_Bayesian_agent_contest(n::Int, T::Int; χ, caching=:none)
     agents = [BayesianAgent(cost; χ=χ) for _ in 1:n]
     initial_efforts = [rand() for _ in 1:n]
-    return TullockContest(agents, initial_efforts, T; accuracy=accuracy)
+    return TullockContest(agents, initial_efforts, T; caching=caching)
 end
 
 # Set parameters
-n = 5  # number of agents
-T = 1000
+n = 3  # number of agents
+T = 3000
 χ = 0.05
-contest = generate_Bayesian_agent_contest(n, T; χ = χ, accuracy = :relaxed);  # Uses default :relaxed accuracy with caching
+contest = generate_Bayesian_agent_contest(n, T; χ = χ, caching=:exact);
 
-@time run!(contest)
+@time run!(contest, ε=0.001, showprogress=true, accuracy=:strict)
 
 nash_gap(contest, T)
 
