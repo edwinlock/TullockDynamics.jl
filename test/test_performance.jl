@@ -112,7 +112,7 @@
         elapsed_bayesian = @elapsed begin
             for agent_idx in 1:3
                 for _ in 1:10  # Fewer iterations due to expected slower performance
-                    bayesian_estimator(contest, agent_idx, window)
+                    bayesian_estimator(contest, agent_idx, window, 1e-8, 1e-6)
                 end
             end
         end

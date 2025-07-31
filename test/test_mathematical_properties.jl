@@ -166,7 +166,7 @@ using StatsBase
         
         @testset "Bayesian estimator properties" begin
             agent_idx = 2
-            bayesian_func = bayesian_estimator(contest, agent_idx, window)
+            bayesian_func = bayesian_estimator(contest, agent_idx, window, 1e-8, 1e-6)
             
             # Test that it returns a valid probability density function
             @test bayesian_func isa Function

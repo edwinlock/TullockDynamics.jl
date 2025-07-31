@@ -106,7 +106,7 @@
         TullockDynamics.update_workspace!(contest, 2)  # Update workspace
         TullockDynamics.update_workspace!(contest, 3)  # Update workspace
         
-        bayesian_func = bayesian_estimator(contest, 1, window)
+        bayesian_func = bayesian_estimator(contest, 1, window, 1e-8, 1e-6)
         @test bayesian_func isa Function
         
         # Test density at a few points

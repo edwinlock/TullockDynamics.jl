@@ -142,7 +142,7 @@
         agent_idx = 1
         
         # Test that it returns a function
-        estimator_func = bayesian_estimator(contest, agent_idx, window)
+        estimator_func = bayesian_estimator(contest, agent_idx, window, 1e-8, 1e-6)
         @test estimator_func isa Function
         
         # Test that the returned function works
