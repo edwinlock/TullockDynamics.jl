@@ -1,5 +1,5 @@
 const MAXGAP = 2^(-20)  # Bracket size tolerance
-const FUNCTION_TOL = 1e-12  # High accuracy function tolerance
+const FUNCTION_TOL = 1e-14  # High accuracy function tolerance
 
 """
     find_root(f::Function, l::Float64) -> Float64

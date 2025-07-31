@@ -1,12 +1,44 @@
 """
-An agent has multiple attributes (all immutable)
-estimator   — function for estimating opponents' total efforts, is given agent efforts, total effort, and vector of wins
-cost        — is a function of agent's effort
-p           — probability that agent updates their effort, is a function of the round t
-α           — step size, as a function of round t
-χ           — lower bound on efforts that agent is permitted to make
-max_effort  - upper bound on efforts that agent is permitted to make
-h           — the size of the history window, as a function of round t. Return value must be subset of range 1:t-1.
+    Agent
+
+An adaptive agent in a Tullock contest with configurable learning and decision-making behavior.
+
+This immutable struct defines an agent's complete behavioral specification including learning
+algorithm, cost structure, participation probability, adaptation rate, effort bounds, and
+memory usage. All functions are defined over time to allow for dynamic strategies.
+
+# Fields
+- `estimator::Function`: Learning algorithm for estimating opponents' total efforts
+  - Signature: `estimator(contest, agent_idx, memory_window, atol, reltol) -> estimate`
+  - Given agent's history and outcomes, returns estimated opponent effort
+- `cost::Function`: Agent's cost function for effort levels
+  - Signature: `cost(effort) -> cost`
+  - Should be increasing and convex for theoretical guarantees
+- `p::Function`: Probability of updating effort in each round
+  - Signature: `p(round) -> probability ∈ [0,1]`
+  - Allows for time-varying participation patterns
+- `α::Function`: Learning step size/adaptation rate
+  - Signature: `α(round) -> step_size ∈ [0,1]`
+  - Controls how much agent adapts toward best response (1 = full adaptation)
+- `χ::Float64`: Minimum effort bound (must be positive)
+  - Prevents degenerate zero-effort solutions
+- `max_effort::Float64`: Maximum effort bound
+  - Computed automatically from cost function via `max_agent_effort(cost)`
+- `h::Function`: Historical memory window function
+  - Signature: `h(round) -> range` where range ⊆ 1:round-1
+  - Determines which past rounds the agent considers for learning
+
+# Agent Design Principles
+- **Modularity**: Each component (learning, costs, adaptation) is independently configurable
+- **Time-varying behavior**: All parameters can change over time for complex strategies
+- **Bounded rationality**: Finite memory windows and probabilistic updates model realistic limitations
+- **Performance optimization**: Functions are called efficiently with minimal allocations
+
+# Theoretical Assumptions
+For convergence guarantees, cost functions should satisfy:
+- Increasing: c'(x) > 0 for x > 0
+- Convex: c''(x) ≥ 0 for x ≥ 0
+- Sufficient growth: lim_{x→∞} c(x) = ∞
 """
 struct Agent
     estimator::Function
@@ -20,14 +52,57 @@ end
 
 
 """
-Convenience constructor to create an agent with max_effort set automatically.
+    Agent(estimator, cost, p, α, χ, h) -> Agent
+
+Convenience constructor that automatically computes maximum effort bound.
+
+This constructor calls `max_agent_effort(cost)` to determine the maximum sensible
+effort level based on the cost function, eliminating the need to specify it manually.
+
+# Arguments
+- `estimator::Function`: Learning algorithm function
+- `cost::Function`: Cost function
+- `p::Function`: Participation probability function
+- `α::Function`: Adaptation rate function
+- `χ::Float64`: Minimum effort bound
+- `h::Function`: Memory window function
+
+# See Also
+- [`max_agent_effort`](@ref): Function that computes maximum effort bound
 """
 Agent(est, cost, p, α, χ, h) = Agent(est, cost, p, α, χ, max_agent_effort(cost), h)
 
 
 """
-Convenience constructor to create an agent with fixed values for
-p, α and h in each round. Here h is the size of the history window.
+    Agent(estimator, cost, p, α, χ, h) -> Agent
+
+Convenience constructor for agents with constant parameters over time.
+
+This constructor creates an agent with fixed participation probability, adaptation rate,
+and memory window size that remain constant across all rounds. The memory window is
+interpreted as a sliding window of the most recent `h` rounds.
+
+# Arguments
+- `estimator::Function`: Learning algorithm function
+- `cost::Function`: Cost function c(x) for effort x
+- `p::Float64`: Fixed participation probability ∈ [0,1]
+- `α::Float64`: Fixed adaptation rate ∈ [0,1]
+- `χ::Float64`: Minimum effort bound (> 0)
+- `h::Int`: Fixed memory window size (≥ 1)
+
+# Parameter Interpretation
+- `p = 0`: Agent never updates (static effort)
+- `p = 1`: Agent always considers updating
+- `α = 0`: Agent never adapts (ignores best response)
+- `α = 1`: Agent fully adapts to best response
+- `h = 1`: Agent only remembers the previous round
+- `h = ∞`: Agent remembers entire history (use large value)
+
+# Memory Window
+The memory window at round t covers rounds max(1, t-h):t-1, ensuring:
+- At least 1 round of history when available
+- At most h rounds of history
+- Never includes the current round t
 """
 function Agent(estimator::Function, cost::Function, p::Float64, α::Float64, χ::Float64, h::Int)
     @assert 0 ≤ p ≤ 1 "Probability p must lie between 0 and 1."
@@ -41,8 +116,39 @@ end
 
 
 """
-Convenience constructor to create an agent with cost function cost(x) = ax^r
-with parameters a and r, as well as with fixed values for p, α and h in each round.
+    Agent(estimator, p, α, χ, h, a, r) -> Agent
+
+Convenience constructor for agents with power-law cost functions.
+
+Creates an agent with cost function c(x) = a⋅x^r and constant behavioral parameters.
+Power-law cost functions are common in economic models and provide flexible marginal
+cost structures.
+
+# Arguments
+- `estimator::Function`: Learning algorithm function  
+- `p::Float64`: Participation probability ∈ [0,1]
+- `α::Float64`: Adaptation rate ∈ [0,1]
+- `χ::Float64`: Minimum effort bound (> 0)
+- `h::Int`: Memory window size (≥ 1)
+- `a::Float64`: Cost scaling factor (> 0)
+- `r::Float64`: Cost exponent (≥ 1)
+
+# Cost Function Properties
+- `r = 1`: Linear costs (constant marginal cost)
+- `r = 2`: Quadratic costs (linear marginal cost)
+- `r > 2`: Superquadratic costs (increasing marginal cost)
+- Higher `a`: More expensive effort
+- Higher `r`: Steeper cost growth
+
+# Requirements
+- `r ≥ 1` ensures convexity for theoretical guarantees
+- `a > 0` ensures positive costs for positive effort
+
+# Example
+```julia
+# Quadratic cost agent: c(x) = 0.5x²
+agent = Agent(max_likelihood_estimator, 1.0, 1.0, 0.01, 10, 0.5, 2.0)
+```
 """
 function Agent(estimator, p::Float64, α::Float64, χ::Float64, h::Int, a::Float64, r::Float64)
     @assert r ≥ 1 "Exponent of cost function must be ≥ 1."
@@ -52,27 +158,105 @@ end
 
 
 """
-Compute utility of `agent` for their effort `x` given total effort
-of other agents `s`.
+    utility(agent::Agent, x, s::Float64) -> Float64
+
+Compute the agent's utility for effort level `x` given opponents' total effort `s`.
+
+The utility function combines the agent's expected payoff from winning (based on
+effort shares in the Tullock contest) minus their cost of effort.
+
+# Formula
+```
+utility(x, s) = x/(x + s) - cost(x)
+```
+
+# Arguments
+- `agent::Agent`: The agent (for accessing cost function)
+- `x`: Agent's effort level (≥ 0)
+- `s::Float64`: Total effort of all other agents (≥ 0)
+
+# Returns
+- `Float64`: Net utility (can be negative if costs exceed expected payoff)
+
+# Interpretation
+- First termn `x/(x + s)`: Probability of winning (effort share)
+- Second term `cost(x)`: Cost of exerting effort x
+- Utility maximization drives agent to optimal effort given opponents' efforts
+
+# Properties
+- Utility is typically concave in own effort x
+- At optimum: marginal benefit = marginal cost
+- Boundary solutions occur when costs are too high relative to winning probability
 """
 utility(agent::Agent, x, s::Float64) = x / (x + s) - agent.cost(x)
 
 
 """
-Compute maximal sensible effort for an agent with `cost` function.
-Recall that the reward is normalised to 1, so the agent will never
-want to make an effort with a cost greater than 1. Hence, solve
-cost(x) = 1 for x using our binary search root finder.
+    max_agent_effort(cost::Function) -> Float64
+
+Compute the maximum sensible effort level for an agent with given cost function.
+
+Since the contest prize is normalized to 1, no rational agent would exert effort
+costing more than the maximum possible payoff. This function finds the effort level
+where cost(x) = 1, representing the upper bound on sensible effort.
+
+# Arguments
+- `cost::Function`: Agent's cost function c(x)
+
+# Returns
+- `Float64`: Maximum effort level where cost equals maximum prize (1.0)
+
+# Implementation
+Solves the equation cost(x) = 1 using binary search root finding, which is
+equivalent to finding the root of f(x) = 1 - cost(x) starting from x = 0.
+
+# Assumptions
+- Cost function is increasing: c'(x) > 0
+- Cost function is continuous
+- cost(0) < 1 (otherwise no positive effort is viable)
+- lim_{x→∞} cost(x) > 1 (solution exists)
+
+# Usage
+This function is called automatically by Agent constructors to set appropriate
+effort bounds, ensuring agents don't waste computational time considering
+uneconomical effort levels.
 """
 max_agent_effort(cost::Function) = find_root(x->1-cost(x), 0.0)
 
 
 """
-Return best response of `agent`` to opponents' total effort s.
+    best_response(agent::Agent, s::Float64, _ignore...) -> Float64
 
-Implementation makes use of cost functions assumptions that imply
-that agent's utility function u(x, s) has a unique maximum on
-interval [χ, ∞), so we can find the unique root of its derivative.
+Compute the agent's optimal effort level given opponents' total effort.
+
+This function finds the effort level that maximizes the agent's utility given
+a fixed level of opponent effort. It uses automatic differentiation to find
+where the marginal benefit equals marginal cost.
+
+# Arguments
+- `agent::Agent`: The agent making the decision
+- `s::Float64`: Total effort of all opponents (≥ 0)
+- `_ignore...`: Unused arguments for compatibility with other method signatures
+
+# Returns
+- `Float64`: Optimal effort level (≥ agent.χ)
+
+# Algorithm
+1. Compute the derivative of utility function with respect to effort
+2. If derivative is negative at minimum bound χ, return χ (boundary solution)
+3. Otherwise, find the root of the derivative (interior solution)
+
+# Mathematical Foundation
+The utility function u(x,s) = x/(x+s) - cost(x) has derivative:
+```
+u'(x,s) = s/(x+s)² - cost'(x)
+```
+The optimal effort satisfies u'(x*,s) = 0, meaning marginal benefit = marginal cost.
+
+# Assumptions
+- Cost function is convex (ensures unique maximum)
+- Utility function has at most one interior maximum
+- If no interior solution exists, boundary solution at χ is optimal
 """
 function best_response(agent::Agent, s::Float64, _ignore...)
     χ::Float64 = agent.χ
@@ -150,6 +334,33 @@ function best_response(agent::Agent, pdf::Function, workspace::ContestWorkspace,
 end
 
 
+"""
+    nash_gap(agent::Agent, effort, other_efforts) -> Float64
+
+Compute the Nash gap for a single agent given current effort levels.
+
+The Nash gap measures how much utility the agent loses by playing their current
+effort instead of their best response. It's zero at Nash equilibrium and positive
+when the agent could improve by unilaterally changing their effort.
+
+# Arguments
+- `agent::Agent`: The agent to analyze
+- `effort`: Agent's current effort level
+- `other_efforts`: Total effort of all other agents
+
+# Returns
+- `Float64`: Nash gap (≥ 0), where 0 indicates optimal play
+
+# Formula
+```
+Nash gap = utility(best_response, other_efforts) - utility(current_effort, other_efforts)
+```
+
+# Interpretation
+- Gap = 0: Agent is playing optimally (Nash equilibrium)
+- Gap > 0: Agent could improve utility by changing effort
+- Larger gaps indicate further deviation from equilibrium
+"""
 function nash_gap(agent::Agent, effort, other_efforts)
     br = best_response(agent, other_efforts)
     max_utility = utility(agent, br, other_efforts)

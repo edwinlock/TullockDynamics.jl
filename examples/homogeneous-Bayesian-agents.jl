@@ -17,7 +17,12 @@ T = 3000
 χ = 0.05
 contest = generate_Bayesian_agent_contest(n, T; χ = χ, caching=:exact);
 
-@time run!(contest, ε=0.001, showprogress=true, accuracy=:strict)
+ε=0.002
+@time run!(contest, ε=ε, showprogress=true, accuracy=:strict)
+
+@time run!(contest, ε=ε, showprogress=true, accuracy=:relaxed)
+
+@time run!(contest, ε=ε, showprogress=true, accuracy=:veryrelaxed)
 
 nash_gap(contest, T)
 

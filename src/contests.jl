@@ -1,5 +1,34 @@
 using StatsBase
 
+"""  
+    TullockContest
+
+A Tullock contest simulation tracking multiple agents competing through effort allocation.
+
+This immutable struct contains the complete state of a contest including agent behaviors,
+historical data, and an optimized workspace for efficient computation.
+
+# Fields
+- `agents::Vector{Agent}`: Competing agents with their strategies and cost functions
+- `efforts::Matrix{Float64}`: Agent effort levels over time (agents × rounds)
+- `winners::Matrix{Bool}`: Boolean indicators of round winners (agents × rounds)
+- `utilities::Matrix{Float64}`: Agent utilities over time (agents × rounds)
+- `nash_gaps::Matrix{Float64}`: Distance from Nash equilibrium (agents × rounds)
+- `workspace::ContestWorkspace`: Pre-allocated buffers and configuration for performance
+
+# Contest Mechanics
+In each round:
+1. Agents probabilistically decide whether to update their effort
+2. If updating, they estimate opponents' total effort using their learning algorithm
+3. They compute their best response to this estimate
+4. A winner is selected probabilistically based on effort shares
+5. The process repeats until convergence or maximum rounds
+
+# Performance Design
+- Pre-allocated matrices eliminate memory allocations during simulation
+- Workspace contains pre-computed constants and reusable buffers
+- Optimized for cache-friendly memory access patterns
+"""
 struct TullockContest
     agents::Vector{Agent}
     efforts::Matrix{Float64}
@@ -9,6 +38,14 @@ struct TullockContest
     workspace::ContestWorkspace
 end
 
+"""  
+    num_rounds(contest::TullockContest) -> Int
+
+Return the total number of rounds in the contest.
+
+This is determined by the second dimension of the efforts matrix, which is pre-allocated
+during contest construction.
+"""
 num_rounds(contest::TullockContest) = size(contest.efforts)[2]
 
 
@@ -154,8 +191,25 @@ function TullockContest(agents::Vector{Agent}, x::Vector{Float64}, T::Int; cachi
 end
 
 
-"""
-Compute the Nash gap of contest in round `t`.
+"""  
+    nash_gap(contest::TullockContest, t::Int) -> Float64
+
+Compute the total Nash gap for all agents in round `t`.
+
+The Nash gap measures how far the contest is from Nash equilibrium. For each agent,
+it's the difference between their maximum possible utility (given others' efforts)
+and their actual utility. The total Nash gap is the sum across all agents.
+
+# Arguments
+- `contest::TullockContest`: The contest to analyze
+- `t::Int`: Round number (1 ≤ t ≤ num_rounds(contest))
+
+# Returns
+- `Float64`: Total Nash gap across all agents (≥ 0)
+
+# Convergence
+A Nash gap of 0 indicates perfect Nash equilibrium. In practice, the contest
+converges when this value drops below a specified tolerance ε.
 """
 function nash_gap(contest::TullockContest, t::Int)
     return sum(contest.nash_gaps[:,t])
