@@ -1,8 +1,5 @@
 # TullockDynamics.jl
 
-[![Build Status](https://github.com/edwinlock/TullockDynamics.jl/workflows/CI/badge.svg)](https://github.com/edwinlock/TullockDynamics.jl/actions)
-[![Coverage](https://codecov.io/gh/edwinlock/TullockDynamics.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/edwinlock/TullockDynamics.jl)
-
 A high-performance Julia package for simulating Tullock contest dynamics with heterogeneous learning agents.
 
 ## Overview
