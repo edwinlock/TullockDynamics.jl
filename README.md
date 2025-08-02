@@ -291,13 +291,10 @@ If you use TullockDynamics.jl in your research, please cite:
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the GPL-3.0 License - see the LICENSE file for details.
 
 ## Related Work
 
 - Tullock, G. (1980). Efficient Rent Seeking. In J. M. Buchanan, R. D. Tollison, & G. Tullock (Eds.), Toward a Theory of the Rent-Seeking Society (pp. 97-112). Texas A&M University Press.
 - Konrad, K. A. (2009). Strategy and Dynamics in Contests. Oxford University Press.
 
-## Acknowledgments
-
-This package was developed with significant contributions from Claude Code for performance optimization, testing infrastructure, and mathematical verification.

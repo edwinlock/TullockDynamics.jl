@@ -2,6 +2,7 @@ name = "TullockDynamics"
 uuid = "1034238e-a696-473b-b6f9-11cae5e5ba19"
 authors = ["Edwin Lock <mail@edwinlock.com>"]
 version = "0.2.0"
+license = "GPL-3.0"
 
 [deps]
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
